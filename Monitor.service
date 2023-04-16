@@ -1,0 +1,14 @@
+[Unit]
+Description=EmailService
+After=syslog.target
+
+[Service]
+User=tom
+Type=simple
+WorkingDirectory=/apps/emailservice
+ExecStart=/usr/bin/java -jar /apps/emailservice/EmailService.jar
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

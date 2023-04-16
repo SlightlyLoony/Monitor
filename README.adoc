@@ -1,0 +1,113 @@
+== What is EmailService?
+
+_EmailService_ is general purpose email sending service that receives MOP messages containing a simple text (not HTML) email, and requesting that it be transmitted through an email provider (such as gmail or mail.com).
+
+=== The MOP message to send an email
+The MOP message to request sending an email should be a direct MOP message, addressed to "emailservice.send", the type should be "simple.text", and reply expected should be false.   The following fields are used to define the email message and how it should be sent:
+
+.MOP Message Fields
+|===
+|Name|Contents
+|from
+|The email address of the sender
+|to
+|The email addresses of the recipients of the email.  This can be a single email address, or a comma-separated list of them. Each address can be either a raw address (like "name@org.com") or with a display name (like "Turkey Dog<name@org.com>").
+|cc
+|The email addresses of the people or groups being copied on the email, formatted exactly like the "to" field.
+|bcc
+|The email addresses of the people or groups being blind-copied on the email, formatted exactly like the "to" field.
+|subject
+|The subject line for the email, preferably less than about 60 characters (so the email client doesn't truncate it).
+|body
+|The text of the email, generally only visible when the email is opened by the email client.  There is no particular limit on the length of this field.
+|provider
+|If left out (the normal case), the email is sent via the highest priority email provider.  If that fails, try again with the next highest priority email provider, and so on through the list of providers.  If all email providers fail, the message is queued up for future retrying.  If this field is present, it must match the name of a configured email provider, or the message is ignored.  Otherwise, attempt one time to send the message via the named email provider.
+|fromDisplay
+|If left out (the normal case), the display name for the email sender is the display name configured for each email provider.  If provided, the given display name for the email sender is used for this email.
+|===
+
+
+=== The components of an email
+
+There are some basic components of email that we all are familiar with.  Well, that we all _think_ we're familiar with, because we see them in our email inbox:
+
+* Addresses: The _To_, _CC_, and _BCC_ that together determine who receives the email.
+* Subject: The brief little one-liner that is intended to give the recipient some clue about what the email concerns.
+* Body: The actual content of the email.
+* Attachments: Files that are transmitted along with the email.
+
+==== Anatomy of an Email Address
+
+Most of us are by now quite familiar with these two valid formats when an email address is contained in a string:
+
+* `mailbox@domain`  (like `tom@dilatush.com`)
+* `Display Name<mailbox@domain>`  (like `Tom Dilatush<tom@dilatush.com>`)
+
+
+It may surprise you to know that there are actually quite a few other details, and some of which may surprise you.  https://en.wikipedia.org/wiki/Email_address[Wikipedia] has a good article about them.
+
+Some things that surprised me:
+
+* The mailbox part is technically case-sensitive -- so `tom@dilatush.com` and `Tom@dilatush.com` should be two independent email addresses.  I'm not sure I've ever seen that in the wild, and apparently both server and client support is spotty, but there it is.
+* A surprising variety of characters are totally legal in a mailbox name.  So, for example, the mailbox name `{Agent#91}` is totally ok.
+* Even _more_ characters are allowed if you quote the mailbox name with double quotes.  For instance, the mailbox name `"I..might..be..crazy!!!"` is fine, as is `"This is a valid mailbox name!@#$%^"`.
+* You can also escape individual characters with a backslash (the documents call that "quoted characters"):  `This\ mailbox\ name\ is\ fine.`
+* The mailbox part cannot be more than 64 characters long.
+
+==== To, CC, and BCC
+
+These three header fields together specify what email addresses should receive the email.  All three email address groups (To, CC, and BCC) can accept a number of email addresses, including zero (although if all three have no addresses your email isn't going _anywhere_!).  The format is simple enough: just a comma-separated list of email addresses formatted as described in <<Anatomy of an Email Address>>.  The maximum number of addressees in each group is dependent on the SMTP provider, and there doesn't seem to be any convention to this, much less a standard.  In every case I've seen personally, you can have well over 100 addresses in each of those address groups.  Some vendors (I'm looking at you, gmail!) limit the total number in all three, rather than having a limit in each address group.
+
+Most likely you're familiar with the behavior of To, CC, and BCC -- but just in case you're not, here's a summary.
+
+* To: All the email addresses on the "To" list are visible to everyone who receives the email.  On "Reply All", every email address on the "To" list receives a copy of the reply.
+* CC: All the email addresses on the "CC" list are visible to everyone who receives the email.  On "Reply All", every email address on the "CC" list receives a copy of the reply.  Note that the behavior of email addresses on the "CC" list is identical to that of the email addresses on the "To" list -- the "CC" lists exists as a cue to the human reader.  If his or her email address is on the "To" list, that's a cue that this email is directed toward them, and action may be expected.  If the email address is on the "CC" list, that's a cue that he or she is being sent a copy of the email just for their interest, and no action is expected.
+* BCC: All of the email addresses on the "BCC" list are invisible to everyone who receives the email.  On "Reply All", no email address on the "BCC" list receives a copy of the reply.  The "BCC" list primarily allows addressees to receive a copy of the email without the knowledge of the "To" or "CC" email addressees.  Sometimes it's also used to protect people from the horrifying consequences of "Reply All" email storms.
+
+==== Subject
+
+This is the simplest component of an email, but even _it_ has its complications!  While there is no maximimum length that I could find, there is a practical limit: most inboxes on computer clients only show the first 50 or 60 characters of the subject line (generally truncating with an ellipsis, like `This is my WAY too long...`).  Many mobile email clients, when used on a phone, only show 20 or 25 characters.  These limits mean that short subject lines are definitely better, and that the information in them should be front-loaded, so that if some of the subject line _is_ truncated, the poor user can still figure out what the mail is about.
+
+HTML is not specifically disallowed in the subject line, but I've never found an email client that would actually render it.  The RFCs that control email format _still_ specify the subject line as ASCII, but you can control the character encoding of an email, including on the subject line.  _EmailService_ defaults to UTF-8, but you can change that if you want something different.
+
+=== Body
+
+The body is just a plain text string, with no HTML or markup.  There is no particular limit on the length.
+
+== Design notes
+
+EmailSenders: One for each email provider, running in an independent thread.  Has a queue that is fed by the Controller with either new emails or emails that need to be retried.  If an email fails to send, and the problem is with the email itself, the failure is logged and the email discarded.  If the email fails to send for any other reason, then the email is either queued for retrying through the same email provider, or passed back to the Controller for possible attempt through a different email provider.  The sender maintains a session for as long as it takes to send the contents of the queue, plus a configurable linger time (to avoid unnecessary connections, which are limited by some email providers).
+
+Controller: Effectively a singleton.  Its inputs are newly-received emails (via MOP message) and failed emails (from email senders).  Its outputs are email senders and the bit bucket.
+
+
+== Dependencies
+
+_EmailService_ has several dependencies:
+
+* _Util_ is a utilities module the author also wrote, freely available from https://github.com/SlightlyLoony/Util[here].
+* _JSON_ is the bog-standard Java JSON module, freely available from https://github.com/stleary/JSON-java[here].
+* _Jakarta Mail_ is the bog-standard Java email API, freely available from https://eclipse-ee4j.github.io/mail/[here].  It's dependency the Jakarta Activation package is available https://eclipse-ee4j.github.io/jaf/[here].
+
+== Why is Email's code so awful?
+
+The author is a retired software and hardware engineer who did this just for fun, and who (so far, anyway) has no code reviewers to upbraid him. Please feel free to fill in this gap! You may contact the author at link:mailto:[tom@dilatush.com].
+
+== How is Email licensed?
+
+EmailService is licensed with the quite permissive MIT license:
+
+....
+Created: March 31, 2023
+Author: Tom Dilatush link:mailto:tom@dilatush.com
+Github: https://github.com/SlightlyLoony/EmailService
+License: MIT
+
+Copyright 2020, 2021 by Tom Dilatush (aka "SlightlyLoony")
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so.
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE A AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+....
