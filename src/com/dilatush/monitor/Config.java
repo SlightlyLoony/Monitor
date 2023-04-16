@@ -1,4 +1,4 @@
-package com.dilatush.emailservice;
+package com.dilatush.monitor;
 
 
 import com.dilatush.mop.PostOffice;
@@ -7,7 +7,7 @@ import com.dilatush.util.config.AConfig;
 import java.util.List;
 
 /**
- * Configuration POJO for the EmailService application.
+ * Configuration POJO for the Monitor application.
  *
  * @author Tom Dilatush  tom@dilatush.com
  */
@@ -16,9 +16,6 @@ public class Config extends AConfig {
     // our post office configuration...
     public PostOffice.PostOfficeConfig postOfficeConfig;
 
-    // our controller configuration...
-    public ControllerConfig controllerConfig;
-
 
     /**
      * Verify the fields of this configuration.
@@ -26,6 +23,5 @@ public class Config extends AConfig {
     @Override
     public void verify( final List<String> _messages ) {
         verifySubConfig( postOfficeConfig, _messages, "postOfficeConfig" );
-        verifySubConfig( controllerConfig, _messages, "controllerConfig" );
     }
 }

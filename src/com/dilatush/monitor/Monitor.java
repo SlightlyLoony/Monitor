@@ -1,5 +1,6 @@
-package com.dilatush.emailservice;
+package com.dilatush.monitor;
 
+import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
 import com.dilatush.util.Outcome;
@@ -11,7 +12,7 @@ import java.util.logging.Logger;
 
 import static com.dilatush.util.General.getLogger;
 
-public class EmailService {
+public class Monitor {
 
     public static void main( String[] args ) throws InterruptedException {
 
@@ -20,17 +21,16 @@ public class EmailService {
         Logger LOGGER = getLogger();
 
 
-        LOGGER.info( "EmailService is starting..." );
+        LOGGER.info( "Monitor is starting..." );
 
         // set up our scheduled executor...
         var executorThreads = 2;
         var executorDaemon = false;  // false means user threads...
         ScheduledExecutor executor = new ScheduledExecutor( executorThreads, executorDaemon );
-        executor.scheduleWithFixedDelay( () -> {}, Duration.ofHours( 1 ), Duration.ofHours( 1 ) );  // to get a thread going...
 
         // get our configuration...
         Config config = new Config();
-        Outcome<?> result = config.init( "EmailServiceConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
+        Outcome<?> result = config.init( "MonitorConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
 
         // if our configuration is not valid, just get out of here...
         if( !result.ok() ) {
@@ -40,12 +40,11 @@ public class EmailService {
 
         // if we make it here, then we have a validated configuration, and we should be good to go!
 
-        // get our controller...
-        Controller controller = new Controller( config.controllerConfig, executor );
-
         // start up our post office...
         PostOffice po = new PostOffice( config.postOfficeConfig );
-        new Listener( po, "send", controller );
+        Mailbox mailbox = po.getMailbox( "monitor" );
+
+        // launch all our monitors...
 
         // we can just leave, because the executor threads are user threads...
     }
