@@ -42,7 +42,7 @@ public class Monitor {
 
         // start up our post office...
         PostOffice po = new PostOffice( config.postOfficeConfig );
-        Mailbox mailbox = po.getMailbox( "monitor" );
+        Mailbox mailbox = po.createMailbox( "monitor" );
 
         // launch all our monitors...
 
