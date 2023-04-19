@@ -26,5 +26,13 @@ public class MonitorConfigurator implements Configurator {
         // set up our configuration object...
         Config config           = (Config) _config;
         config.postOfficeConfig = poc;
+
+        //////////// Monitors Configuration //////////////
+
+        // NTPServer configuration...
+        config.ntpServerURL      = "http://ntpserver.dilatush.com";
+        config.ntpServerUsername = "admin";
+        config.ntpServerPassword = === NTP server password ===;
+        config.ntpServerInterval = Duration.ofHours( 1 );
     }
 }

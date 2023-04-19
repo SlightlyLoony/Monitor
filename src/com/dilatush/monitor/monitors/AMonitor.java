@@ -3,8 +3,10 @@ package com.dilatush.monitor.monitors;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,6 +26,20 @@ public abstract class AMonitor {
         mailbox         = _mailbox;
         eventSource     = "monitor." + getClass().getSimpleName();
         tagLastSentMap  = new HashMap<>();
+    }
+
+
+    /**
+     * Return the base-64 encoded basic authentication string for the given username and password.
+     *
+     * @param _user The username to encode.
+     * @param _password The password to encode.
+     * @return The base-64 encoded basic authentication string.
+     */
+    protected String getBasicAuthentication( final String _user, final String _password ) {
+        var up = _user + ":" + _password;
+        var b64e = Base64.getEncoder();
+        return b64e.encodeToString( up.getBytes( StandardCharsets.UTF_8) );
     }
 
 

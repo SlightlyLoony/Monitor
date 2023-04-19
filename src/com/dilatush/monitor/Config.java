@@ -4,6 +4,7 @@ package com.dilatush.monitor;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.config.AConfig;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -15,6 +16,13 @@ public class Config extends AConfig {
 
     // our post office configuration...
     public PostOffice.PostOfficeConfig postOfficeConfig;
+
+    ///////// Monitors configuration /////////
+
+    public String   ntpServerURL;
+    public String   ntpServerUsername;
+    public String   ntpServerPassword;
+    public Duration ntpServerInterval;
 
 
     /**

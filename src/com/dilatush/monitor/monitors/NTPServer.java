@@ -5,18 +5,23 @@ import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
 import com.dilatush.util.Outcome;
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.Strings.isEmpty;
@@ -25,7 +30,7 @@ import static java.lang.Thread.sleep;
 
 /**
  * Instances of this class monitor a TF-1006-PRO NTP server.  This server uses GPS clock references and a disciplined oscillator to implement a Stratum 1
- * NTP server.  The monitor produces MOP events for significant status changes, and status reports for the website.
+ * NTP server.  The monitor produces MOP events for significant status changes, statistics to be recorded in the database, and status reports for the website.
  */
 public class NTPServer extends AMonitor {
 
@@ -36,7 +41,7 @@ public class NTPServer extends AMonitor {
 
 
     /**
-     * Create a new instance of this class to monitor a TF-1006-PRO NTP server at the given URL, with the given user name and password.
+     * Create a new instance of this class to monitor a TF-1006-PRO NTP server at the given URL, with the given username and password.
      *
      * @param _mailbox The mailbox for this monitor to use.
      * @param _url The URL of the TF-1006-PRO NTP server.
@@ -56,13 +61,6 @@ public class NTPServer extends AMonitor {
     }
 
 
-    private static final Pattern UPTIME_PATTERN = Pattern.compile( ".*<rtime>([0-9]*) Day ([0-9]*).*" );
-    private static final Pattern STATE_PATTERN  = Pattern.compile( ".*<loppstate>(.*?)</loppstate>.*?<tie>(.*?)</tie>.*?<ntpstate>(.*?)</ntpstate>.*" );
-    private static final Pattern GNSS_PATTERN   = Pattern.compile(
-            ".*?<ant>(.*?)</ant>.*?<svused>([0-9]*?)</svused>.*?<gpsinfo>[0-9]*?/([0-9]*?)</gpsinfo>.*?<glinfo>[0-9]*?/([0-9]*?)</glinfo>.*?<gainfo>" +
-            "[0-9]*?/([0-9]*?)</gainfo>.*?<lat>([NS]) ([0-9.]*?)</lat>.*?<long>([EW]) ([0-9.]*?)</long>.*?<alt>([0-9.]*?) m</alt>.*"
-    );
-
     /**
      * Perform the periodic monitoring.  For this monitor that interval should be 60 seconds.
      */
@@ -71,71 +69,13 @@ public class NTPServer extends AMonitor {
 
         try {
 
-            // first we scrape the API for status information...
-            var time  = scrape( "time"  );
-            var state = scrape( "state" );
-            var gnss  = scrape( "gnss"  );
+            // scrape the current status data from the TF-1006-PRO NTP server...
+            var scraping = scrape();
 
-            // extract the useful and interesting information from what we scraped...
-            var uptime      = 0;          // how long the NTP server has been up, in hours...
-            var referenceUp = false;      // true if the frequency reference is up (GPS locked and disciplined oscillator locked)...
-            var ntpUp       = false;      // true if the NTP server software is up...
-            var tie         = 0;          // time interval error (phase error over an interval) in nanoseconds...
-            var satsUsed    = 0;          // number of satellites used for GPS solution...
-            var satsTotal   = 0;          // number of satellites visible to the NTP server's receiver...
-            var gpsTotal    = 0;          // number of GPS satellites visible to the NTP server's receiver...
-            var galTotal    = 0;          // number of Galileo satellites visible to the NTP server's receiver...
-            var gloTotal    = 0;          // number of GLOSNASS satellites visible to the NTP server's receiver...
-            var lat         = 0F;         // latitude in degrees (+ for north, - for south)...
-            var lon         = 0F;         // longitude in degrees (+ for east, - for west)...
-            var altitude    = 0F;         // altitude in feet...
-            var antennaOK   = false;      // true if the antenna is ok...
-
-            // keep track of whether we have valid data or not...
-            var valid = true;
-
-            // first the uptime in hours...
-            var mat = UPTIME_PATTERN.matcher( time );
-            if( mat.matches() )
-                uptime = Integer.parseInt( mat.group( 1 ) ) * 24 + Integer.parseInt( mat.group( 2 ) );
-            else
-                valid = false;
-
-            // then the loop state, time interval error (TIE), and NTP state...
-            mat = STATE_PATTERN.matcher( state );
-            if( mat.matches() ) {
-                referenceUp = "Locked".equals( mat.group( 1 ) );
-                ntpUp = "ACTIVE".equals( mat.group( 3 ) );
-                tie = Integer.parseInt( mat.group( 2 ) );
-            }
-            else
-                valid = false;
-
-            // and finally the satellite information...
-            mat = GNSS_PATTERN.matcher( gnss );
-            if( mat.matches() ) {
-                antennaOK = "OK".equals( mat.group( 1 ) );
-                satsUsed = Integer.parseInt( mat.group( 2 ) );
-                gpsTotal = Integer.parseInt( mat.group( 3 ) );
-                gloTotal = Integer.parseInt( mat.group( 4 ) );
-                galTotal = Integer.parseInt( mat.group( 5 ) );
-                satsTotal = gpsTotal + gloTotal + galTotal;
-                lat = convertLocation( mat.group( 7 ), "S".equals( mat.group( 6 ) ) );
-                lon = convertLocation( mat.group( 9 ), "W".equals( mat.group( 8 ) ) );
-                altitude = Float.parseFloat( mat.group( 10 ) ) * 3.28084F;
-            }
-            else
-                valid = false;
-
-            // if we don't have a valid value, then our data didn't match one of the patterns...
-            if( !valid ) {
-
-            }
-
-            // when we get here, we've scraped the NTP server for status information, and converted the raw scrape to usable values...
-
-
-            this.hashCode();
+            // based on the scraped data, send status, statistics, and any events...
+            sendStatus( scraping );
+            sendStatistics( scraping );
+            sendEvents( scraping );
         }
 
         // if we get any exceptions, then we log them and send a rate-limited event...
@@ -149,68 +89,190 @@ public class NTPServer extends AMonitor {
         }
     }
 
-    // <time><rtime>106 Day 17:34:26</rtime><ctime>2023/04/17 15:41:08</ctime><ltime>2023/04/17 08:41:08</ltime><temp>43</temp><holdtime>0 Day 00:00:00</holdtime></time>
 
-    // <time>
-    //    <rtime>106 Day 17:34:26</rtime>
-    //    <ctime>2023/04/17 15:41:08</ctime>
-    //    <ltime>2023/04/17 08:41:08</ltime>
-    //    <temp>43</temp>
-    //    <holdtime>0 Day 00:00:00</holdtime>
-    // </time>
+    private void sendStatus( final Scraping _scraping ) {
 
-    // <state><syncsrc>GPS+GLONASS+Galileo</syncsrc><loppstate>Locked</loppstate><tie>-40</tie><control>31446</control><ntpstate>ACTIVE</ntpstate><color>green</color></state>
-
-    // <state>
-    //    <syncsrc>GPS+GLONASS+Galileo</syncsrc>
-    //    <loppstate>Locked</loppstate>
-    //    <tie>-40</tie>
-    //    <control>31446</control>
-    //    <ntpstate>ACTIVE</ntpstate>
-    //    <color>green</color>
-    // </state>
-
-    // <gnss><ant>OK</ant><const>GPS+GLONASS+Galileo</const><svused>20</svused><gpsinfo>9/10</gpsinfo><bdinfo>0/0</bdinfo><glinfo>7/9</glinfo><gainfo>4/9</gainfo><lat>N 4134.9827</lat><long>W 11150.3990</long><alt>1471.9 m</alt></gnss>
-
-    // <gnss>
-    //    <ant>OK</ant>
-    //    <const>GPS+GLONASS+Galileo</const>
-    //    <svused>20</svused>
-    //    <gpsinfo>9/10</gpsinfo>
-    //    <bdinfo>0/0</bdinfo>
-    //    <glinfo>7/9</glinfo>
-    //    <gainfo>4/9</gainfo>
-    //    <lat>N 4134.9827</lat>
-    //    <long>W 11150.3990</long>
-    //    <alt>1471.9 m</alt>
-    // </gnss>
-
-
-    private float convertLocation( final String _latlon, final boolean _negate ) {
-        var latlon = Double.parseDouble( _latlon );
-        var intDeg = Math.floor( latlon / 100D );
-        var frcDeg = (latlon / 100D - intDeg) * 100D / 60D;
-        var deg = intDeg + frcDeg;
-        return (float)(_negate ? -deg : deg);
     }
 
 
+    private void sendStatistics( final Scraping _scraping ) {
 
+    }
+
+
+    private void sendEvents( final Scraping _scraping ) {
+
+    }
+
+
+    /**
+     * Queries the TF-1006-PRO NTP server for its current status, and returns that data in a ready-to-use form.  See comments at the end of the source file for an example of
+     * the raw scraped data.
+     *
+     * @return The data scraped from the TF-1006-PRO NTP server, munged into a ready-to-use form.
+     * @throws IOException On any problem reading the data from the TF-1006-PRO NTP server.
+     * @throws ParserConfigurationException On any problem extracting particular information from the scraped data.
+     * @throws SAXException On any problem extracting particular information from the scraped data.
+     * @throws XPathExpressionException On any problem extracting particular information from the scraped data.
+     */
+    private Scraping scrape() throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
+
+        // get an XML string with all the data scraped from the NTP server...
+        String xml =
+                "<ntp>" +
+                scrape( "time"  ) +
+                scrape( "state" ) +
+                scrape( "gnss"  ) +
+                "</ntp>";
+
+        // get ready to use XPath to pull data out of the XML string...
+        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = builderFactory.newDocumentBuilder();
+        Document doc = builder.parse( new InputSource( new StringReader( xml ) ) );
+        var result = new Scraping();
+        XPath xPath = XPathFactory.newInstance().newXPath();
+
+        // extract the data we need...
+        result.uptime      = extractUptime( doc, xPath );
+        result.referenceUp = "Locked".equals( xPath.compile( "//ntp/state/loppstate" ).evaluate( doc, XPathConstants.STRING ) );
+        result.ntpUp       = "ACTIVE".equals( xPath.compile( "//ntp/state/ntpstate" ).evaluate( doc, XPathConstants.STRING ) );
+        result.tie         = extractInt( doc, xPath, "//ntp/state/tie" );
+        result.antennaOK   = "OK".equals( xPath.compile( "//ntp/gnss/ant" ).evaluate( doc, XPathConstants.STRING ) );
+        result.satsUsed    = extractInt( doc, xPath, "//ntp/gnss/svused" );
+        result.satsTotal   = extractSatellitesVisible( doc, xPath );
+        result.lat         = extractLatLon( doc, xPath, "//ntp/gnss/lat" );
+        result.lon         = extractLatLon( doc, xPath, "//ntp/gnss/long" );
+        result.altitude    = extractAltitude( doc, xPath );
+
+        return result;
+    }
+
+
+    /**
+     * Extract the altitude in feet from the given XML document.
+     *
+     * @param _doc The XML document scraped from the TF-1006-PRO NTP server.
+     * @param _xPath The XPath to use.
+     * @return The altitude of the TF-1006-PRO NTP server in feet.
+     * @throws XPathExpressionException On any problem parsing the XPath.
+     */
+    private float extractAltitude( final Document _doc, final XPath _xPath ) throws XPathExpressionException {
+        var fld = (String)_xPath.compile( "//ntp/gnss/alt" ).evaluate( _doc, XPathConstants.STRING );  // will be something like "1433.2 m"...
+        var parts = fld.split( " " );
+        return 3.28084F * Float.parseFloat( parts[0] );  // convert meters to feet...
+    }
+
+
+    /**
+     * Extract the latitude or longitude in degrees from the given XML document and path.
+     *
+     * @param _doc The XML document scraped from the TF-1006-PRO NTP server.
+     * @param _xPath The XPath to use.
+     * @param _path The path to the data to extract.
+     * @return The latitude or longitude of the TF-1006-PRO NTP server in degrees.
+     * @throws XPathExpressionException On any problem parsing the XPath.
+     */
+    private float extractLatLon( final Document _doc, final XPath _xPath, final String _path ) throws XPathExpressionException {
+        var fld = (String)_xPath.compile( _path ).evaluate( _doc, XPathConstants.STRING );  // will be something like "W 11154.832", where 111 is degrees and everything else minutes...
+        var parts = fld.split( " " );
+        var negate = "S".equals( parts[0] ) || "W".equals( parts[0] );  // south latitude and west longitude are negative...
+        var latlon = Double.parseDouble( parts[1] );
+        var intDeg = Math.floor( latlon / 100D );
+        var frcDeg = (latlon / 100D - intDeg) * 100D / 60D;
+        var deg = intDeg + frcDeg;
+        return (float)(negate ? -deg : deg);
+    }
+
+
+    /** Extract the total satellites visible by summing the GPS, Galileo, and GLOSNASS satellites visible.
+     *
+     * @param _doc The XML document scraped from the TF-1006-PRO NTP server.
+     * @param _xPath The XPath to use.
+     * @return The total satellites visible.
+     * @throws XPathExpressionException On any problem parsing the XPath.
+     */
+    private int extractSatellitesVisible( final Document _doc, final XPath _xPath ) throws XPathExpressionException {
+        return
+                extractSatellitesVisible( _doc, _xPath, "//ntp/gnss/gpsinfo" ) +  // GPS info...
+                extractSatellitesVisible( _doc, _xPath, "//ntp/gnss/glinfo" ) +   // GLOSNASS info...
+                extractSatellitesVisible( _doc, _xPath, "//ntp/gnss/gainfo" );    // Galileo info...
+    }
+
+
+    /**
+     * Extract the satellites visible in the constellation at the given path.
+     *
+     * @param _doc The XML document scraped from the TF-1006-PRO NTP server.
+     * @param _xPath The XPath to use.
+     * @param _path The path to the data to extract.
+     * @return The satellites visible in the constellation at the given path.
+     * @throws XPathExpressionException On any problem parsing the XPath.
+     */
+    private int extractSatellitesVisible( final Document _doc, final XPath _xPath, final String _path ) throws XPathExpressionException {
+        var fld = (String)_xPath.compile( _path ).evaluate( _doc, XPathConstants.STRING );  // will be something like "4/6", 4 used, 6 visible...
+        var parts = fld.split( "/" );
+        return Integer.parseInt( parts[1] );
+    }
+
+
+    /**
+     * Extract an integer from the given path in the given document.
+     *
+     * @param _doc The XML document scraped from the TF-1006-PRO NTP server.
+     * @param _xPath The XPath to use.
+     * @param _path The path to the data to extract.
+     * @return The extracted integer.
+     * @throws XPathExpressionException On any problem parsing the XPath.
+     */
+    private int extractInt( final Document _doc, final XPath _xPath, final String _path ) throws XPathExpressionException {
+        return (int)Math.round( (double)_xPath.compile( _path ).evaluate( _doc, XPathConstants.NUMBER ) );
+    }
+
+
+    /**
+     * Extract the uptime in hours from the given document.
+     *
+     * @param _doc The XML document scraped from the TF-1006-PRO NTP server.
+     * @param _xPath The XPath to use.
+     * @return The uptime in hours.
+     * @throws XPathExpressionException On any problem parsing the XPath.
+     */
+    private int extractUptime( final Document _doc, final XPath _xPath ) throws XPathExpressionException {
+        var uptime = (String) _xPath.compile( "//ntp/time/rtime" ).evaluate( _doc, XPathConstants.STRING );  // will be something like "110 Day 12:03:22"...
+        var parts = uptime.split( " Day " );
+        var time = parts[1].split( ":" );
+        return Integer.parseInt( parts[0] ) * 24 + Integer.parseInt( time[0] );
+    }
+
+
+    /**
+     * Return the data scraped from the TF-1006-PRO NTP server at the given page.  The data will be XML; see comment at the end of the source code file for an example.  The valid
+     * pages are "time", "state", and "gnss".
+     *
+     * @param _page The page to scrape; must be one of "time", "state", or "gnss".
+     * @return The scraped XML data.
+     * @throws IOException On any problem reading the data.
+     */
     private String scrape( final String _page ) throws IOException {
 
+        // synthesize the right URL for the desired page, like "http://ntpserver.dilatush.com/xml/gnss.xml"...
         var url = new URL( urlStr + "/xml/" + _page + ".xml" );
+
+        // set up our connection and request...
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod( "GET" );
-
         con.setRequestProperty("Content-Type", "text/xml");
         con.setRequestProperty( "Authorization", "Basic " + basicAuthentication );
-
         con.setInstanceFollowRedirects(false);
 
+        // make the request...
         int status = con.getResponseCode();
 
-        BufferedReader in = new BufferedReader(
-                new InputStreamReader(con.getInputStream()));
+        // if we get anything other than an OK (200), error out...
+        if( status != 200 ) throw new IOException( "HTTP Request status was not ok (200): " + status );
+
+        // read the response...
+        BufferedReader in = new BufferedReader( new InputStreamReader( con.getInputStream() ) );
         String inputLine;
         StringBuilder content = new StringBuilder();
         while( (inputLine = in.readLine()) != null ) {
@@ -218,6 +280,7 @@ public class NTPServer extends AMonitor {
         }
         in.close();
 
+        // cleanup...
         con.disconnect();
 
         return content.toString();
@@ -225,30 +288,34 @@ public class NTPServer extends AMonitor {
 
 
     /**
-     * Return the base-64 encoded basic authentication string for the given username and password.
-     *
-     * @param _user The username to encode.
-     * @param _password The password to encode.
-     * @return The base-64 encoded basic authentication string.
+     * Data structure to hold the scraped and processed data from the TF-1006-PRO NTP server.
      */
-    private String getBasicAuthentication( final String _user, final String _password ) {
-        var up = _user + ":" + _password;
-        var b64e = Base64.getEncoder();
-        return b64e.encodeToString( up.getBytes( StandardCharsets.UTF_8) );
+    private static class Scraping {
+        private int     uptime;      // how long the NTP server has been up, in hours...
+        private boolean referenceUp; // true if the frequency reference is up (GPS locked and disciplined oscillator locked)...
+        private boolean ntpUp;       // true if the NTP server software is up...
+        private int     tie;         // time interval error (phase error over an interval) in nanoseconds...
+        private int     satsUsed;    // number of satellites used for GPS solution...
+        private int     satsTotal;   // number of satellites visible to the NTP server's receiver...
+        private float   lat;         // latitude in degrees (+ for north, - for south)...
+        private float   lon;         // longitude in degrees (+ for east, - for west)...
+        private float   altitude;    // altitude in feet...
+        private boolean antennaOK;   // true if the antenna is ok...
     }
 
 
     /**
      * This stub main is here for troubleshooting only - using it you can run the monitor just once, from a development machine.
      */
-    public static void main( final String[] _args ) throws IOException, InterruptedException {
+    public static void main( final String[] _args ) throws InterruptedException {
 
         Config config = new Config();
         Outcome<?> result = config.init( "MonitorConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
+        if( result.notOk() ) throw new IllegalArgumentException( "bad configuration" );
         PostOffice po = new PostOffice( config.postOfficeConfig );
         Mailbox mailbox = po.createMailbox( "monitor" );
 
-        var mon = new NTPServer( mailbox, "http://ntpserver.dilatush.com", "admin", "zQGNzRLwE_7F8Jxi" );
+        var mon = new NTPServer( mailbox, config.ntpServerURL, config.ntpServerUsername, config.ntpServerPassword );
         mon.run();
 
         sleep( 5000 );
@@ -257,3 +324,39 @@ public class NTPServer extends AMonitor {
         config.hashCode();
     }
 }
+
+
+/*
+   Sample synthesized scraped XML blob:
+
+   <ntp>
+      <time>
+         <rtime>106 Day 17:34:26</rtime>
+         <ctime>2023/04/17 15:41:08</ctime>
+         <ltime>2023/04/17 08:41:08</ltime>
+         <temp>43</temp>
+         <holdtime>0 Day 00:00:00</holdtime>
+      </time>
+      <state>
+         <syncsrc>GPS+GLONASS+Galileo</syncsrc>
+         <loppstate>Locked</loppstate>
+         <tie>-40</tie>
+         <control>31446</control>
+         <ntpstate>ACTIVE</ntpstate>
+         <color>green</color>
+      </state>
+      <gnss>
+         <ant>OK</ant>
+         <const>GPS+GLONASS+Galileo</const>
+         <svused>20</svused>
+         <gpsinfo>9/10</gpsinfo>
+         <bdinfo>0/0</bdinfo>
+         <glinfo>7/9</glinfo>
+         <gainfo>4/9</gainfo>
+         <lat>N 4134.9827</lat>
+         <long>W 11150.3990</long>
+         <alt>1471.9 m</alt>
+         </gnss>
+   </ntp>
+
+ */
