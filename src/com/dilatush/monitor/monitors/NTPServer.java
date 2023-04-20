@@ -20,9 +20,13 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.dilatush.monitor.monitors.AMonitor.TriState.*;
 import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.Strings.isEmpty;
 import static java.lang.Thread.sleep;
@@ -36,8 +40,20 @@ public class NTPServer extends AMonitor {
 
     private static final Logger LOGGER = getLogger();
 
+    private static final int TIE_MAX_ERROR_NS = 100;  // maximum allowable Time Interval Error (TIE), in nanoseconds...
+    private static final int MIN_SATS_USED    = 6;
+    private static final int MIN_SATS_VISIBLE = 10;
+
     private final String urlStr;
     private final String basicAuthentication;
+
+    // keep track of the last state of variables that we send events for...
+    private TriState lastReferenceUp   = UNKNOWN;
+    private TriState lastNTPUp         = UNKNOWN;
+    private TriState lastTIEOK         = UNKNOWN;
+    private TriState lastSatsUsedOK    = UNKNOWN;
+    private TriState lastSatsVisibleOK = UNKNOWN;
+    private TriState lastAntennaOK     = UNKNOWN;
 
 
     /**
@@ -102,6 +118,60 @@ public class NTPServer extends AMonitor {
 
     private void sendEvents( final Scraping _scraping ) {
 
+        handleEvent( () -> from( _scraping.referenceUp ), () -> lastReferenceUp, (t) -> lastReferenceUp = t,
+                "NTPServer.referenceDown",     "NTP GPS reference is down",      "NTP GPS reference is down",                            7,
+                "NTPServer.referenceUp",       "NTP GPS reference is up",        "NTP GPS reference is up",                              2,
+                "NTPServer.referenceWentDown", "NTP GPS reference went down",    "NTP GPS reference went down after being up",           7,
+                "NTPServer.referenceWentUp",   "NTP GPS reference came back up", "NTP GPS reference came up after being down",           7 );
+
+        handleEvent( () -> from( _scraping.ntpUp ), () -> lastNTPUp, (t) -> lastNTPUp = t,
+                "NTPServer.ntpDown",     "NTP server application is down",      "NTP server application is down",                            7,
+                "NTPServer.ntpUp",       "NTP server application is up",        "NTP server application is up",                              2,
+                "NTPServer.ntpWentDown", "NTP server application went down",    "NTP server application went down after being up",           7,
+                "NTPServer.ntpWentUp",   "NTP server application came back up", "NTP server application came up after being down",           7 );
+
+        handleEvent( () -> from( Math.abs( _scraping.tie ) <= TIE_MAX_ERROR_NS ), () -> lastTIEOK, (t) -> lastTIEOK = t,
+                "NTPServer.tieOOB",      "NTP reference TIE is out-of-bounds",    "NTP reference Time Interval Error (TIE) is out-of-bounds: "   + _scraping.tie + "ns", 6,
+                "NTPServer.tieIB",       "NTP reference TIE is in-bounds",        "NTP reference Time Interval Error (TIE) is in-bounds: "       + _scraping.tie + "ns", 5,
+                "NTPServer.tieWentOOB",  "NTP reference TIE went out-of-bounds",  "NTP reference Time Interval Error (TIE) went out-of-bounds: " + _scraping.tie + "ns", 6,
+                "NTPServer.tieWentIB",   "NTP reference TIE came back in-bounds", "NTP reference Time Interval Error (TIE) went in-bounds: "     + _scraping.tie + "ns", 6 );
+
+        handleEvent( () -> from( Math.abs( _scraping.satsUsed ) >= MIN_SATS_USED ), () -> lastSatsUsedOK, (t) -> lastSatsUsedOK = t,
+                "NTPServer.satsUsedOOB",      "NTP GPS not enough satellites used",       "NTP GPS not enough satellites used: "       + _scraping.satsUsed, 6,
+                "NTPServer.satsUsedIB",       "NTP GPS enough satellites used",           "NTP GPS enough satellites used: "           + _scraping.satsUsed, 5,
+                "NTPServer.satsUsedWentOOB",  "NTP GPS no longer enough satellites used", "NTP GPS no longer enough satellites used: " + _scraping.satsUsed, 6,
+                "NTPServer.satsUsedWentIB",   "NTP GPS now enough satellites used",       "NTP GPS now enough satellites used: "       + _scraping.satsUsed, 6 );
+    }
+
+
+    private void handleEvent( final Supplier<TriState> _current, final Supplier<TriState> _previous, final Consumer<TriState> _setPrevious,
+                              final String _tagTypeUF, String _subjectUF, String _msgUF, int _levelUF,
+                              final String _tagTypeUT, String _subjectUT, String _msgUT, int _levelUT,
+                              final String _tagTypeTF, String _subjectTF, String _msgTF, int _levelTF,
+                              final String _tagTypeFT, String _subjectFT, String _msgFT, int _levelFT ) {
+
+        // if we didn't know the previous state (because the monitor program was just started)...
+        if( _previous.get() == UNKNOWN ) {
+
+            // send the appropriate event given the current state...
+            if( _current.get() == FALSE )
+                sendEvent( _tagTypeUF, _tagTypeUF, _subjectUF, _msgUF, _levelUF );
+            else
+                sendEvent( _tagTypeUT, _tagTypeUT, _subjectUT, _msgUT, _levelUT );
+        }
+
+        // if we did know the previous state...
+        else {
+
+            // send the appropriate event given the current state...
+            if( _current.get() == FALSE )
+                sendEvent( _tagTypeTF, _tagTypeTF, _subjectTF, _msgTF, _levelTF );
+            else
+                sendEvent( _tagTypeFT, _tagTypeFT, _subjectFT, _msgFT, _levelFT );
+        }
+
+        // set the previous state to the current state...
+        _setPrevious.accept( _current.get() );
     }
 
 

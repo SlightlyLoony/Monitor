@@ -12,13 +12,23 @@ import java.util.Map;
 
 import static com.dilatush.util.General.isNull;
 
+/**
+ * Abstract base class for all monitors.
+ */
 public abstract class AMonitor {
 
-    protected final Mailbox             mailbox;
-    protected final String              eventSource;
+    protected final Mailbox             mailbox;      // the mailbox for this monitor to use...
+    protected final String              eventSource;  // the source for events from this monitor, in the form "monitor.<monitor class name>"...
+
+    // keeps track of the last time we sent a rate-limited event...
     protected final Map<String,Instant> tagLastSentMap;  // tag -> when last sent...
 
 
+    /**
+     * Creates a new instance of this class with the given Mailbox.
+     *
+     * @param _mailbox The mailbox for this monitor to use.
+     */
     protected AMonitor( final Mailbox _mailbox ) {
 
         if( isNull( _mailbox ) ) throw new IllegalArgumentException( "_mailbox must be provided" );
@@ -43,6 +53,17 @@ public abstract class AMonitor {
     }
 
 
+    /**
+     * Send an event with the given minimum interval, the given tag, type, subject, message, and level, from the event source created by the constructor, with a timestamp of now.
+     * If called with an event where an event with the same tag was sent less than the minimum interval, this method returns without sending the event.
+     *
+     * @param _minInterval The minimum interval between sending events with the given tag.
+     * @param _tag The tag for the event.
+     * @param _type The type of the event.
+     * @param _subject The subject for the event.
+     * @param _message The message for the event.
+     * @param _level The level for the event.
+     */
     protected void sendEvent( final Duration _minInterval, final String _tag, final String _type, final String _subject, final String _message, final int _level ) {
 
         // if we have a time an event with this tag was last sent...
@@ -60,6 +81,15 @@ public abstract class AMonitor {
     }
 
 
+    /**
+     * Send an event with the given tag, type, subject, message, and level, from the event source created by the constructor, with a timestamp of now.
+     *
+     * @param _tag The tag for the event.
+     * @param _type The type of the event.
+     * @param _subject The subject for the event.
+     * @param _message The message for the event.
+     * @param _level The level for the event.
+     */
     protected void sendEvent( final String _tag, final String _type, final String _subject, final String _message, final int _level ) {
 
         Message msg = mailbox.createDirectMessage( "events.post", "event.post", false );
@@ -71,6 +101,16 @@ public abstract class AMonitor {
         msg.putDotted( "event.level",   _level                     );
         msg.putDotted( "event.subject", _subject                   );
         mailbox.send( msg );
+    }
+
+
+    protected enum TriState {
+
+        UNKNOWN, TRUE, FALSE;
+
+        public static TriState from( final boolean _b ) {
+            return _b ? TRUE : FALSE;
+        }
     }
 
 
