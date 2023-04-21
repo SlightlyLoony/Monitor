@@ -2,6 +2,7 @@ package com.dilatush.monitor.monitors;
 
 import com.dilatush.monitor.Config;
 import com.dilatush.mop.Mailbox;
+import com.dilatush.mop.Message;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
 import com.dilatush.util.Outcome;
@@ -20,7 +21,6 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -111,67 +111,143 @@ public class NTPServer extends AMonitor {
     }
 
 
+    /**
+     * Send event with current NTP statistics, for insertion in the NTP statistics database...
+     *
+     * @param _scraping The data scraped from the TF-1006-PRO NTP server.
+     */
     private void sendStatistics( final Scraping _scraping ) {
+
+        // build our event message...
+        Message msg = mailbox.createDirectMessage( "events.post", "event.post", false );
+        msg.putDotted( "tag",                          "ntpstats"                 );
+        msg.putDotted( "timestamp",                    System.currentTimeMillis() );
+        msg.putDotted( "fields.uptimeHours",           _scraping.uptime           );
+        msg.putDotted( "fields.tieNs",                 _scraping.tie              );
+        msg.putDotted( "fields.referenceUp",           _scraping.referenceUp      );
+        msg.putDotted( "fields.ntpUp",                 _scraping.ntpUp            );
+        msg.putDotted( "fields.satsUsed",              _scraping.satsUsed         );
+        msg.putDotted( "fields.satsVisible",           _scraping.satsTotal        );
+        msg.putDotted( "fields.antennaOk",             _scraping.antennaOK        );
+        msg.putDotted( "fields.latitude",              _scraping.lat              );
+        msg.putDotted( "fields.longitude",             _scraping.lon              );
+        msg.putDotted( "fields.altitudeFeet",          _scraping.altitude         );
+
+        // send it!
+        mailbox.send( msg );
 
     }
 
 
+    /**
+     * Send events when any monitored conditions change.
+     *
+     * @param _scraping The data scraped from the TF-1006-PRO NTP server.
+     */
     private void sendEvents( final Scraping _scraping ) {
 
-        handleEvent( () -> from( _scraping.referenceUp ), () -> lastReferenceUp, (t) -> lastReferenceUp = t,
+        // handle change in NTP GPS reference up or down...
+        handleChangedCondition( () -> _scraping.referenceUp, () -> lastReferenceUp, (t) -> lastReferenceUp = t,
                 "NTPServer.referenceDown",     "NTP GPS reference is down",      "NTP GPS reference is down",                            7,
                 "NTPServer.referenceUp",       "NTP GPS reference is up",        "NTP GPS reference is up",                              2,
                 "NTPServer.referenceWentDown", "NTP GPS reference went down",    "NTP GPS reference went down after being up",           7,
                 "NTPServer.referenceWentUp",   "NTP GPS reference came back up", "NTP GPS reference came up after being down",           7 );
 
-        handleEvent( () -> from( _scraping.ntpUp ), () -> lastNTPUp, (t) -> lastNTPUp = t,
+        // handle change in NTP server application up or down...
+        handleChangedCondition( () -> _scraping.ntpUp, () -> lastNTPUp, (t) -> lastNTPUp = t,
                 "NTPServer.ntpDown",     "NTP server application is down",      "NTP server application is down",                            7,
                 "NTPServer.ntpUp",       "NTP server application is up",        "NTP server application is up",                              2,
                 "NTPServer.ntpWentDown", "NTP server application went down",    "NTP server application went down after being up",           7,
                 "NTPServer.ntpWentUp",   "NTP server application came back up", "NTP server application came up after being down",           7 );
 
-        handleEvent( () -> from( Math.abs( _scraping.tie ) <= TIE_MAX_ERROR_NS ), () -> lastTIEOK, (t) -> lastTIEOK = t,
+        // handle change in time interval error (TIE) in-bounds or out-of-bounds...
+        handleChangedCondition( () -> Math.abs( _scraping.tie ) <= TIE_MAX_ERROR_NS, () -> lastTIEOK, (t) -> lastTIEOK = t,
                 "NTPServer.tieOOB",      "NTP reference TIE is out-of-bounds",    "NTP reference Time Interval Error (TIE) is out-of-bounds: "   + _scraping.tie + "ns", 6,
                 "NTPServer.tieIB",       "NTP reference TIE is in-bounds",        "NTP reference Time Interval Error (TIE) is in-bounds: "       + _scraping.tie + "ns", 5,
                 "NTPServer.tieWentOOB",  "NTP reference TIE went out-of-bounds",  "NTP reference Time Interval Error (TIE) went out-of-bounds: " + _scraping.tie + "ns", 6,
                 "NTPServer.tieWentIB",   "NTP reference TIE came back in-bounds", "NTP reference Time Interval Error (TIE) went in-bounds: "     + _scraping.tie + "ns", 6 );
 
-        handleEvent( () -> from( Math.abs( _scraping.satsUsed ) >= MIN_SATS_USED ), () -> lastSatsUsedOK, (t) -> lastSatsUsedOK = t,
+        // handle change in number of satellites used for GPS fix being enough or not enough...
+        handleChangedCondition( () -> Math.abs( _scraping.satsUsed ) >= MIN_SATS_USED, () -> lastSatsUsedOK, (t) -> lastSatsUsedOK = t,
                 "NTPServer.satsUsedOOB",      "NTP GPS not enough satellites used",       "NTP GPS not enough satellites used: "       + _scraping.satsUsed, 6,
                 "NTPServer.satsUsedIB",       "NTP GPS enough satellites used",           "NTP GPS enough satellites used: "           + _scraping.satsUsed, 5,
                 "NTPServer.satsUsedWentOOB",  "NTP GPS no longer enough satellites used", "NTP GPS no longer enough satellites used: " + _scraping.satsUsed, 6,
                 "NTPServer.satsUsedWentIB",   "NTP GPS now enough satellites used",       "NTP GPS now enough satellites used: "       + _scraping.satsUsed, 6 );
+
+        // handle change in number of satellites visible for GPS fix being enough or not enough...
+        handleChangedCondition( () -> Math.abs( _scraping.satsTotal ) >= MIN_SATS_USED, () -> lastSatsVisibleOK, (t) -> lastSatsVisibleOK = t,
+                "NTPServer.satsVisibleOOB",      "NTP GPS not enough satellites visible",       "NTP GPS not enough satellites visible: "       + _scraping.satsTotal, 6,
+                "NTPServer.satsVisibleIB",       "NTP GPS enough satellites visible",           "NTP GPS enough satellites visible: "           + _scraping.satsTotal, 5,
+                "NTPServer.satsVisibleWentOOB",  "NTP GPS no longer enough satellites visible", "NTP GPS no longer enough satellites visible: " + _scraping.satsTotal, 6,
+                "NTPServer.satsVisibleWentIB",   "NTP GPS now enough satellites visible",       "NTP GPS now enough satellites visible: "       + _scraping.satsTotal, 6 );
+
+        // handle change in NTP GPS antenna ok or not ok...
+        handleChangedCondition( () -> _scraping.antennaOK, () -> lastAntennaOK, (t) -> lastAntennaOK = t,
+                "NTPServer.antennaNotOk",     "NTP GPS antenna is not ok",   "NTP GPS antenna is not ok",   7,
+                "NTPServer.antennaOk",        "NTP GPS antenna is ok",       "NTP GPS antenna is ok",       2,
+                "NTPServer.antennaWentNotOk", "NTP GPS antenna went not ok", "NTP GPS antenna went not ok", 7,
+                "NTPServer.antennaWentOk",    "NTP GPS antenna went ok",     "NTP GPS antenna went ok",     7 );
     }
 
 
-    private void handleEvent( final Supplier<TriState> _current, final Supplier<TriState> _previous, final Consumer<TriState> _setPrevious,
-                              final String _tagTypeUF, String _subjectUF, String _msgUF, int _levelUF,
-                              final String _tagTypeUT, String _subjectUT, String _msgUT, int _levelUT,
-                              final String _tagTypeTF, String _subjectTF, String _msgTF, int _levelTF,
-                              final String _tagTypeFT, String _subjectFT, String _msgFT, int _levelFT ) {
+    /**
+     * Send an event on change of a monitored condition.
+     *
+     * @param _current Function to return the current state of the monitored condition: true if ok, false if not.
+     * @param _previous Function to return the state of the monitored condition on the previous monitor run: true if ok, false if not, unknown if this is the first monitor run.
+     * @param _setPrevious Function to set the previous state of the monitored condition.
+     * @param _tagTypeUF Event tag and type when condition changed from unknown to false.
+     * @param _subjectUF Event subject when condition changed from unknown to false.
+     * @param _msgUF Event message when condition changed from unknown to false.
+     * @param _levelUF Event level when condition changed from unknown to false.
+     * @param _tagTypeUT Event tag and type when condition changed from unknown to true.
+     * @param _subjectUT Event subject when condition changed from unknown to true.
+     * @param _msgUT Event message when condition changed from unknown to true.
+     * @param _levelUT Event level when condition changed from unknown to true.
+     * @param _tagTypeTF Event tag and type when condition changed from true to false.
+     * @param _subjectTF Event subject when condition changed from true to false.
+     * @param _msgTF Event message when condition changed from true to false.
+     * @param _levelTF Event level when condition changed from true to false.
+     * @param _tagTypeFT Event tag and type when condition changed from false to true.
+     * @param _subjectFT Event subject when condition changed from false to true.
+     * @param _msgFT Event message when condition changed from false to true.
+     * @param _levelFT Event level when condition changed from false to true.
+     */
+    private void handleChangedCondition( final Supplier<Boolean> _current, final Supplier<TriState> _previous, final Consumer<TriState> _setPrevious,
+                                         final String _tagTypeUF, String _subjectUF, String _msgUF, int _levelUF,
+                                         final String _tagTypeUT, String _subjectUT, String _msgUT, int _levelUT,
+                                         final String _tagTypeTF, String _subjectTF, String _msgTF, int _levelTF,
+                                         final String _tagTypeFT, String _subjectFT, String _msgFT, int _levelFT ) {
 
-        // if we didn't know the previous state (because the monitor program was just started)...
-        if( _previous.get() == UNKNOWN ) {
+        // get the current state as a tri-state...
+        var current = from( _current.get() );
 
-            // send the appropriate event given the current state...
-            if( _current.get() == FALSE )
-                sendEvent( _tagTypeUF, _tagTypeUF, _subjectUF, _msgUF, _levelUF );
-            else
-                sendEvent( _tagTypeUT, _tagTypeUT, _subjectUT, _msgUT, _levelUT );
+        // if the state has changed (previous state does not equal current state), send an event...
+        if( current != _previous.get() ) {
+
+            // if we didn't know the previous state (because the monitor program was just started)...
+            if( _previous.get() == UNKNOWN ) {
+
+                // send the appropriate event given the current state...
+                if( current == FALSE )
+                    sendEvent( _tagTypeUF, _tagTypeUF, _subjectUF, _msgUF, _levelUF );
+                else
+                    sendEvent( _tagTypeUT, _tagTypeUT, _subjectUT, _msgUT, _levelUT );
+            }
+
+            // if we did know the previous state...
+            else {
+
+                // send the appropriate event given the current state...
+                if( current == FALSE )
+                    sendEvent( _tagTypeTF, _tagTypeTF, _subjectTF, _msgTF, _levelTF );
+                else
+                    sendEvent( _tagTypeFT, _tagTypeFT, _subjectFT, _msgFT, _levelFT );
+            }
+
+            // set the previous state to the current state...
+            _setPrevious.accept( current );
         }
-
-        // if we did know the previous state...
-        else {
-
-            // send the appropriate event given the current state...
-            if( _current.get() == FALSE )
-                sendEvent( _tagTypeTF, _tagTypeTF, _subjectTF, _msgTF, _levelTF );
-            else
-                sendEvent( _tagTypeFT, _tagTypeFT, _subjectFT, _msgFT, _levelFT );
-        }
-
-        // set the previous state to the current state...
-        _setPrevious.accept( _current.get() );
     }
 
 
@@ -388,6 +464,9 @@ public class NTPServer extends AMonitor {
         var mon = new NTPServer( mailbox, config.ntpServerURL, config.ntpServerUsername, config.ntpServerPassword );
         mon.run();
 
+        sleep( 5000 );
+
+        mon.run();
         sleep( 5000 );
 
         //noinspection ResultOfMethodCallIgnored
