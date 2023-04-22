@@ -106,8 +106,26 @@ public class NTPServer extends AMonitor {
     }
 
 
+    /**
+     * Send a published NTP monitoring message.
+     *
+     * @param _scraping The data scraped from the TF-1006-PRO NTP server.
+     */
     private void sendStatus( final Scraping _scraping ) {
 
+        Message msg = mailbox.createPublishMessage( "ntp.monitor" );
+
+        // fill in our collected data...
+        msg.putDotted( "monitor.ntp.uptimeHours",           _scraping.uptime           );
+        msg.putDotted( "monitor.ntp.tieNs",                 _scraping.tie              );
+        msg.putDotted( "monitor.ntp.referenceUp",           _scraping.referenceUp      );
+        msg.putDotted( "monitor.ntp.ntpUp",                 _scraping.ntpUp            );
+        msg.putDotted( "monitor.ntp.satsUsed",              _scraping.satsUsed         );
+        msg.putDotted( "monitor.ntp.satsVisible",           _scraping.satsTotal        );
+        msg.putDotted( "monitor.ntp.antennaOk",             _scraping.antennaOK        );
+
+        // send it!
+        mailbox.send( msg );
     }
 
 
@@ -135,7 +153,6 @@ public class NTPServer extends AMonitor {
 
         // send it!
         mailbox.send( msg );
-
     }
 
 
@@ -175,7 +192,7 @@ public class NTPServer extends AMonitor {
                 "NTPServer.satsUsedWentIB",   "NTP GPS now enough satellites used",       "NTP GPS now enough satellites used: "       + _scraping.satsUsed, 6 );
 
         // handle change in number of satellites visible for GPS fix being enough or not enough...
-        handleChangedCondition( () -> Math.abs( _scraping.satsTotal ) >= MIN_SATS_USED, () -> lastSatsVisibleOK, (t) -> lastSatsVisibleOK = t,
+        handleChangedCondition( () -> Math.abs( _scraping.satsTotal ) >= MIN_SATS_VISIBLE, () -> lastSatsVisibleOK, (t) -> lastSatsVisibleOK = t,
                 "NTPServer.satsVisibleOOB",      "NTP GPS not enough satellites visible",       "NTP GPS not enough satellites visible: "       + _scraping.satsTotal, 6,
                 "NTPServer.satsVisibleIB",       "NTP GPS enough satellites visible",           "NTP GPS enough satellites visible: "           + _scraping.satsTotal, 5,
                 "NTPServer.satsVisibleWentOOB",  "NTP GPS no longer enough satellites visible", "NTP GPS no longer enough satellites visible: " + _scraping.satsTotal, 6,
