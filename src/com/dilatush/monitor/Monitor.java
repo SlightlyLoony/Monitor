@@ -1,5 +1,7 @@
 package com.dilatush.monitor;
 
+import com.dilatush.monitor.monitors.NTPServer;
+import com.dilatush.monitor.monitors.YoLink;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
@@ -45,6 +47,10 @@ public class Monitor {
         Mailbox mailbox = po.createMailbox( "monitor" );
 
         // launch all our monitors...
+        executor.scheduleAtFixedRate( new NTPServer( mailbox, config.ntpServerURL, config.ntpServerUsername, config.ntpServerPassword ),
+                Duration.ZERO, config.ntpServerInterval );
+        executor.scheduleAtFixedRate( new YoLink( mailbox, config.yolinkClientID, config.yolinkSecret ),
+                Duration.ZERO, config.yolinkInterval );
 
         // we can just leave, because the executor threads are user threads...
     }

@@ -24,6 +24,10 @@ public class Config extends AConfig {
     public String   ntpServerPassword;
     public Duration ntpServerInterval;
 
+    public String   yolinkClientID;
+    public String   yolinkSecret;
+    public Duration yolinkInterval;
+
 
     /**
      * Verify the fields of this configuration.

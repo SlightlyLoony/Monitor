@@ -33,6 +33,11 @@ public class MonitorConfigurator implements Configurator {
         config.ntpServerURL      = "http://ntpserver.dilatush.com";
         config.ntpServerUsername = "admin";
         config.ntpServerPassword = === NTP server password ===;
-        config.ntpServerInterval = Duration.ofHours( 1 );
+        config.ntpServerInterval = Duration.ofMinutes( 1 );
+
+        // YoLink configuration...
+        config.yolinkClientID = === YoLink client ID ===;
+        config.yolinkSecret   = === YoLink secret ===;
+        config.yolinkInterval = Duration.ofMinutes( 15 );
     }
 }

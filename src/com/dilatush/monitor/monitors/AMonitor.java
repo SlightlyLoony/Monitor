@@ -15,7 +15,7 @@ import static com.dilatush.util.General.isNull;
 /**
  * Abstract base class for all monitors.
  */
-public abstract class AMonitor {
+public abstract class AMonitor implements Runnable {
 
     protected final Mailbox             mailbox;      // the mailbox for this monitor to use...
     protected final String              eventSource;  // the source for events from this monitor, in the form "monitor.<monitor class name>"...
