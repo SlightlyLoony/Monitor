@@ -1,4 +1,7 @@
 import com.dilatush.monitor.Config;
+import com.dilatush.monitor.MonitorInstance;
+import com.dilatush.monitor.monitors.NTPServer;
+import com.dilatush.monitor.monitors.YoLink;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.config.Configurator;
 import com.dilatush.util.config.AConfig;
@@ -30,14 +33,16 @@ public class MonitorConfigurator implements Configurator {
         //////////// Monitors Configuration //////////////
 
         // NTPServer configuration...
-        config.ntpServerURL      = "http://ntpserver.dilatush.com";
-        config.ntpServerUsername = "admin";
-        config.ntpServerPassword = === NTP server password ===;
-        config.ntpServerInterval = Duration.ofMinutes( 1 );
+        Map<String,Object> params = new HashMap<>();
+        params.put( "URL",      "http://ntpserver.dilatush.com" );
+        params.put( "username", "admin"                         );
+        params.put( "password", === NTP server password ===     );
+        config.monitors.add( new MonitorInstance( NTPServer.class, params, Duration.ofMinutes( 1 ) ) );
 
         // YoLink configuration...
-        config.yolinkClientID = === YoLink client ID ===;
-        config.yolinkSecret   = === YoLink secret ===;
-        config.yolinkInterval = Duration.ofMinutes( 15 );
+        params = new HashMap<>();
+        params.put( "clientID", === YoLink client ID === );
+        params.put( "secret"  , === YoLink secret ===    );
+        config.monitors.add( new MonitorInstance( YoLink.class, params, Duration.ofMinutes( 15 ) ) );
     }
 }

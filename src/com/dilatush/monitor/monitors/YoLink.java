@@ -10,15 +10,15 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import static com.dilatush.util.General.isNull;
 import static java.lang.Thread.sleep;
 
 public class YoLink extends AMonitor {
@@ -35,11 +35,15 @@ public class YoLink extends AMonitor {
      *
      * @param _mailbox The mailbox for this monitor to use.
      */
-    public YoLink( final Mailbox _mailbox, final String _clientID, final String _secret ) {
+    public YoLink( final Mailbox _mailbox, final Map<String,Object> _params ) {
         super( _mailbox );
 
-        clientID = _clientID;
-        secret   = _secret;
+        if( isNull( _params ) ) throw new IllegalArgumentException( "_params must be provided" );
+
+        clientID = (String) _params.get( "clientID" );
+        secret   = (String) _params.get( "secret"   );
+
+        if( isNull( clientID, secret ) ) throw new IllegalArgumentException( "clientID and secret parameters must be supplied" );
     }
 
 
@@ -203,7 +207,8 @@ public class YoLink extends AMonitor {
         PostOffice po = new PostOffice( config.postOfficeConfig );
         Mailbox mailbox = po.createMailbox( "monitor" );
 
-        var mon = new YoLink( mailbox, config.yolinkClientID, config.yolinkSecret );
+        var mi = config.monitors.get( 1 );
+        var mon = new YoLink( mailbox, mi.parameters() );
 
         mon.run();
 

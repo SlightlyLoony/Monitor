@@ -4,7 +4,7 @@ package com.dilatush.monitor;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.config.AConfig;
 
-import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -18,15 +18,7 @@ public class Config extends AConfig {
     public PostOffice.PostOfficeConfig postOfficeConfig;
 
     ///////// Monitors configuration /////////
-
-    public String   ntpServerURL;
-    public String   ntpServerUsername;
-    public String   ntpServerPassword;
-    public Duration ntpServerInterval;
-
-    public String   yolinkClientID;
-    public String   yolinkSecret;
-    public Duration yolinkInterval;
+    public List<MonitorInstance> monitors = new ArrayList<>();
 
 
     /**

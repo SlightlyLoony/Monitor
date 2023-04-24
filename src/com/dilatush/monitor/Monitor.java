@@ -1,7 +1,5 @@
 package com.dilatush.monitor;
 
-import com.dilatush.monitor.monitors.NTPServer;
-import com.dilatush.monitor.monitors.YoLink;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
@@ -10,6 +8,8 @@ import com.dilatush.util.ScheduledExecutor;
 
 import java.io.File;
 import java.time.Duration;
+import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.dilatush.util.General.getLogger;
@@ -46,11 +46,27 @@ public class Monitor {
         PostOffice po = new PostOffice( config.postOfficeConfig );
         Mailbox mailbox = po.createMailbox( "monitor" );
 
-        // launch all our monitors...
-        executor.scheduleAtFixedRate( new NTPServer( mailbox, config.ntpServerURL, config.ntpServerUsername, config.ntpServerPassword ),
-                Duration.ZERO, config.ntpServerInterval );
-        executor.scheduleAtFixedRate( new YoLink( mailbox, config.yolinkClientID, config.yolinkSecret ),
-                Duration.ZERO, config.yolinkInterval );
+        try {
+            // launch all our configured monitors...
+            var startDelay = Duration.ZERO;
+            for( MonitorInstance mi : config.monitors ) {
+
+                // use reflection to get a constructor for our monitor...
+                var c = mi.monitorClass().getConstructor( Mailbox.class, Map.class );
+
+                // get our new monitor instance...
+                var monitor = c.newInstance( mailbox, mi.parameters() );
+
+                // schedule it...
+                executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );
+
+                // stagger the start of the next monitor by a couple minutes...
+                startDelay = startDelay.plus( Duration.ofMinutes( 2 ) );
+            }
+        }
+        catch( Exception _e ) {
+            LOGGER.log( Level.SEVERE, "Problem starting monitors", _e );
+        }
 
         // we can just leave, because the executor threads are user threads...
     }

@@ -21,6 +21,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -28,7 +29,7 @@ import java.util.logging.Logger;
 
 import static com.dilatush.monitor.monitors.AMonitor.TriState.*;
 import static com.dilatush.util.General.getLogger;
-import static com.dilatush.util.Strings.isEmpty;
+import static com.dilatush.util.General.isNull;
 import static java.lang.Thread.sleep;
 
 
@@ -60,20 +61,21 @@ public class NTPServer extends AMonitor {
      * Create a new instance of this class to monitor a TF-1006-PRO NTP server at the given URL, with the given username and password.
      *
      * @param _mailbox The mailbox for this monitor to use.
-     * @param _url The URL of the TF-1006-PRO NTP server.
-     * @param _user The username for the TF-1006-PRO NTP server.
-     * @param _password The password for the given user on the TF-1006-PRO NTP server.
+     * @param _params The map of parameters, which must include "URL", "username", and "password".
      */
-    public NTPServer( final Mailbox _mailbox, final String _url, final String _user, final String _password ) {
+    public NTPServer( final Mailbox _mailbox, final Map<String,Object> _params ) {
         super( _mailbox );
 
-        // sanity checks...
-        if( isEmpty( _url )      ) throw new IllegalArgumentException( "_url must be provided" );
-        if( isEmpty( _user )     ) throw new IllegalArgumentException( "_user must be provided" );
-        if( isEmpty( _password ) ) throw new IllegalArgumentException( "_password must be provided" );
+        if( isNull( _params ) ) throw new IllegalArgumentException( "_params must be supplied" );
 
-        urlStr = _url;
-        basicAuthentication = getBasicAuthentication( _user, _password );
+        var url      = (String) _params.get( "URL"      );
+        var username = (String) _params.get( "username" );
+        var password = (String) _params.get( "password" );
+
+        if( isNull( url, username, password ) ) throw new IllegalArgumentException( "URL, username, and password parameters must all be supplied" );
+
+        urlStr = url;
+        basicAuthentication = getBasicAuthentication( username, password );
     }
 
 
@@ -478,7 +480,8 @@ public class NTPServer extends AMonitor {
         PostOffice po = new PostOffice( config.postOfficeConfig );
         Mailbox mailbox = po.createMailbox( "monitor" );
 
-        var mon = new NTPServer( mailbox, config.ntpServerURL, config.ntpServerUsername, config.ntpServerPassword );
+        var mi = config.monitors.get( 0 );
+        var mon = new NTPServer( mailbox, mi.parameters() );
         mon.run();
 
         sleep( 5000 );
