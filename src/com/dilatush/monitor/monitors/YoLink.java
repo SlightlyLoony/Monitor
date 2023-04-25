@@ -15,35 +15,63 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
+import static com.dilatush.util.Conversions.fromCtoF;
+import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.General.isNull;
 import static java.lang.Thread.sleep;
 
+
+/**
+ * Instances of this class implement a monitor for YoLink temperature and humidity sensors.
+ */
 public class YoLink extends AMonitor {
 
+    private final Logger LOGGER = getLogger();
 
     private final String clientID;
     private final String secret;
 
-    private String accessToken;
+    private String  accessToken;
     private Instant accessTokenExpires;
+    private List<YoLinkTriggerDef> triggers;
+
 
     /**
-     * Creates a new instance of this class with the given Mailbox.
+     * Create a new instance of this class, with the given mailbox and parameters.  At a minimum, the parameters must include "clientID" and "secret".  The parameters may
+     * optionally include specifications for events triggered by reading from the sensors, as "triggers" mapped to a list of {@link YoLinkTriggerDef}s.
      *
-     * @param _mailbox The mailbox for this monitor to use.
+     * @param _mailbox The MOP mailbox for this monitor to use.
+     * @param _params The parameters for this monitor.
      */
     public YoLink( final Mailbox _mailbox, final Map<String,Object> _params ) {
         super( _mailbox );
 
         if( isNull( _params ) ) throw new IllegalArgumentException( "_params must be provided" );
 
-        clientID = (String) _params.get( "clientID" );
-        secret   = (String) _params.get( "secret"   );
+        clientID  = (String) _params.get( "clientID" );
+        secret    = (String) _params.get( "secret"   );
+        var trigs = _params.get( "triggers" );
 
         if( isNull( clientID, secret ) ) throw new IllegalArgumentException( "clientID and secret parameters must be supplied" );
+
+        triggers = new ArrayList<>();
+
+        if( trigs != null ) {
+
+            if( !(trigs instanceof List<?> triggersRaw) ) throw new IllegalArgumentException( "triggers parameter supplied, but is not a List" );
+
+            for( var trig : triggersRaw ) {
+
+                if( !(trig instanceof YoLinkTriggerDef trigger) ) throw new IllegalArgumentException( "triggers list contains something other than a YoLinkTriggerDef" );
+
+                triggers.add( trigger );
+            }
+        }
     }
 
 
@@ -57,8 +85,13 @@ public class YoLink extends AMonitor {
             ensureAccessToken();
             var devices = getDevices();
             var states = getTempHumiditySensorsState( devices );
-            sendEvents( states );
-            sendStatus( states );
+
+            // make a map of the sensors by name...
+            var statesByName = new HashMap<String,THState>();
+            for( var state : states ) statesByName.put( state.device.name, state );
+
+            sendEvents( states, statesByName );
+            sendStatus( states, statesByName );
         }
         catch( Exception _e ) {
             throw new RuntimeException( _e );
@@ -66,13 +99,62 @@ public class YoLink extends AMonitor {
     }
 
 
-    private void sendStatus( final List<THState> _states ) {
+    private void sendStatus( final List<THState> _states, final Map<String,THState> _statesByName ) {
 
     }
 
 
-    private void sendEvents( final List<THState> _states ) {
+    private void sendEvents( final List<THState> _states, final Map<String,THState> _statesByName ) {
 
+        // iterate over all our triggers...
+        for( YoLinkTriggerDef trigger : triggers ) {
+
+            // handle a value trigger...
+            if( trigger.klass() == YoLinkTriggerClass.VALUE ) {
+
+                // get the current value...
+                var value = getCurrentValue( _statesByName, trigger );
+
+                // if it evaluates as true, then send our event...
+                if( evaluateTrigger( value, trigger ) ) sendEvent( value, trigger );
+            }
+
+            // otherwise, we have a transition trigger...
+            else {
+
+            }
+        }
+    }
+
+
+    private void sendEvent( final double _value, final YoLinkTriggerDef _trigger ) {
+
+        // construct a formatted value, with units...
+        var units = ((_trigger.field() == YoLinkTriggerField.TEMPERATURE) ? "°F" : "%" );
+        var val   = String.format( " (%.1f" + units + ")", _value );
+        var msg = _trigger.eventMessage() + val;
+
+        // send the event...
+        sendEvent( _trigger.minInterval(), _trigger.eventTag(), _trigger.sensorName(), _trigger.eventSubject(), msg, _trigger.eventLevel() );
+    }
+
+
+    private boolean evaluateTrigger( final double _value, final YoLinkTriggerDef _trigger ) {
+        return switch( _trigger.type() ) {
+            case IN       -> (_value >= _trigger.lowerBound() && (_value <= _trigger.upperBound() ) );
+            case OUT      -> (_value <  _trigger.lowerBound() || (_value >  _trigger.upperBound() ) );
+            case BELOW    -> (_value <  _trigger.lowerBound() );
+            case AT_LEAST -> (_value >= _trigger.upperBound() );
+        };
+    }
+
+
+    private double getCurrentValue( final Map<String,THState> _statesByName, final YoLinkTriggerDef _trigger ) {
+        var state = _statesByName.get( _trigger.sensorName() );
+        return switch( _trigger.field() ) {
+            case HUMIDITY -> state.humidity;
+            case TEMPERATURE -> state.temperature;
+        };
     }
 
 
@@ -98,7 +180,7 @@ public class YoLink extends AMonitor {
                     device,
                     dataObj.getBoolean( "online" ),
                     stateObj.getInt( "battery" ),
-                    stateObj.getDouble( "temperature" ),
+                    fromCtoF( stateObj.getDouble( "temperature" ) ),
                     stateObj.getDouble( "humidity" ),
                     stateObj.getDouble( "tempCorrection" ),
                     stateObj.getDouble( "humidityCorrection" )
@@ -199,7 +281,7 @@ public class YoLink extends AMonitor {
     /**
      * This stub main is here for troubleshooting only - using it you can run the monitor just once, from a development machine.
      */
-    public static void main( final String[] _args ) throws InterruptedException, IOException {
+    public static void main( final String[] _args ) throws InterruptedException {
 
         Config config = new Config();
         Outcome<?> result = config.init( "MonitorConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
@@ -218,91 +300,3 @@ public class YoLink extends AMonitor {
         config.hashCode();
     }
 }
-
-/*
-{
-    "access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2ODIyNjcwNjEsImV4cCI6MTY4MjI3NDI2MSwiaXNzIjoidWFfMjkxM0Y4QjY2OTZFNDA1QTlDQTY4RUIzQkM2MUUyRTIiLCJhdWQiOiI2YjM0M2UxMzdkYjQ0OWYxOWQ5NWU2OWUxN2I0MmUzMiIsInN1YiI6IjAxMjE4N2Q5NzdkNDQ3YWFiNTFjODMxMzQ4Mzg1ZWUzIiwic2NvcGUiOlsiYXMvYXUiXX0.s0Jo9My56IFJRklMrrn2kWAy2t9feSjoSmDAf31Hc1s",
-    "refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2ODIyNjcwNjEsImV4cCI6MTY4NDg1OTA2MSwiaXNzIjoidWFfMjkxM0Y4QjY2OTZFNDA1QTlDQTY4RUIzQkM2MUUyRTIiLCJhdWQiOiI2YjM0M2UxMzdkYjQ0OWYxOWQ5NWU2OWUxN2I0MmUzMiIsInN1YiI6IjAxMjE4N2Q5NzdkNDQ3YWFiNTFjODMxMzQ4Mzg1ZWUzIiwic2NvcGUiOlsiYXMvYXUiXX0.XmyzMj_q0p7r6ezkbnYLEKBEZU1r45H7fgg_aG7m75Y",
-    "scope":["create"],
-    "token_type":"bearer",
-    "expires_in":7200
-}
-
-
-{
-    "code":"000000",
-    "method":"Home.getDeviceList",
-    "data":
-    {
-        "devices":
-        [
-            {
-                "modelName":"YS8005-UC",
-                "parentDeviceId":null,
-                "name":"Deck",
-                "type":"THSensor",
-                "deviceId":"d88b4c0100040fee",
-                "deviceUDID":"6fc5306c97c04b01b906e4dd3277d7ce",
-                "token":"FF0AFDD14F84C0D8A485CF027A4A9276"
-            },
-            {
-                "modelName":"YS8003-UC",
-                "parentDeviceId":null,
-                "name":"Garage Freezer",
-                "type":"THSensor",
-                "deviceId":"d88b4c0200077361",
-                "deviceUDID":"e4a7d8d880664b2ab95e832ac6cce5cc",
-                "token":"1A5E3A123E8213D1D85348F37E32CD0E"
-            },
-            {
-                "modelName":"YS8003-UC",
-                "parentDeviceId":null,
-                "name":"Kitchen Freezer",
-                "type":"THSensor",
-                "deviceId":"d88b4c0200055b4e",
-                "deviceUDID":"3f553a1b02f245088196dbff3b32b9d3",
-                "token":"10FA82A1632A3A329257E0D614C7B892"
-            },
-            {
-                "modelName":"YS8003-UC",
-                "parentDeviceId":null,
-                "name":"Kitchen Refrigerator",
-                "type":"THSensor",
-                "deviceId":"d88b4c0200078e93",
-                "deviceUDID":"0475aac67d3e4c43a86d9d109e56c973",
-                "token":"6438C0D3A0B1CC10ADD8137CF579EF19"
-            },
-            {
-                "modelName":"YS8003-UC",
-                "parentDeviceId":null,
-                "name":"Office",
-                "type":"THSensor",
-                "deviceId":"d88b4c0200078e83",
-                "deviceUDID":"7d496571ce2545c0a67c942be5134883",
-                "token":"CEC7799956DE54F760FCC68F29B69031"
-            },
-            {
-                "modelName":"YS8003-UC",
-                "parentDeviceId":null,
-                "name":"Shed Freezer",
-                "type":"THSensor",
-                "deviceId":"d88b4c020007739f",
-                "deviceUDID":"3be18321d79b4c02be5c23ccb3047a49",
-                "token":"6A4D304B0B403FEA7EAE9425A7731041"
-            },
-            {
-                "modelName":"YS1603-UC",
-                "parentDeviceId":null,
-                "name":"YoLink Hub",
-                "type":"Hub",
-                "deviceId":"d88b4c160301865d",
-                "deviceUDID":"e156407b2bf446e8ac81ee2e25a068a0",
-                "token":"3ABBF1D82985E793BA8C55683242115B"
-            }
-        ]
-    },
-    "msgid":1682276189699,
-    "time":1682276189699,
-    "desc":"Success"
-}
- */

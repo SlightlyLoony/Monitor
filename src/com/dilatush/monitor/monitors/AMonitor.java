@@ -57,7 +57,7 @@ public abstract class AMonitor implements Runnable {
      * Send an event with the given minimum interval, the given tag, type, subject, message, and level, from the event source created by the constructor, with a timestamp of now.
      * If called with an event where an event with the same tag was sent less than the minimum interval, this method returns without sending the event.
      *
-     * @param _minInterval The minimum interval between sending events with the given tag.
+     * @param _minInterval The minimum interval between sending events with the given tag; if null then there is no minimum time.
      * @param _tag The tag for the event.
      * @param _type The type of the event.
      * @param _subject The subject for the event.
@@ -65,6 +65,12 @@ public abstract class AMonitor implements Runnable {
      * @param _level The level for the event.
      */
     protected void sendEvent( final Duration _minInterval, final String _tag, final String _type, final String _subject, final String _message, final int _level ) {
+
+        // if no minimum interval, just send the damn thing...
+        if( isNull( _minInterval ) ) {
+            sendEvent( _tag, _type, _subject, _message, _level );
+            return;
+        }
 
         // if we have a time an event with this tag was last sent...
         var timeSent = tagLastSentMap.get( _tag );

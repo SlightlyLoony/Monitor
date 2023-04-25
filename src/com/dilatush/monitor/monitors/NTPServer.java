@@ -58,7 +58,7 @@ public class NTPServer extends AMonitor {
 
 
     /**
-     * Create a new instance of this class to monitor a TF-1006-PRO NTP server at the given URL, with the given username and password.
+     * Create a new instance of this class to monitor a TF-1006-PRO NTP server at the given URL, with the given username and password (contained in the parameters).
      *
      * @param _mailbox The mailbox for this monitor to use.
      * @param _params The map of parameters, which must include "URL", "username", and "password".

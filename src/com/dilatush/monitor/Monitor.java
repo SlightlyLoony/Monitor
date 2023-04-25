@@ -16,7 +16,9 @@ import static com.dilatush.util.General.getLogger;
 
 public class Monitor {
 
-    public static void main( String[] args ) throws InterruptedException {
+    // TODO: move formatted temperature and humidity to configuration...
+
+    public static void main( String[] args ) {
 
         // set the configuration file location (must do before any logging actions occur)...
         System.getProperties().setProperty( "java.util.logging.config.file", "logging.properties" );
@@ -60,7 +62,7 @@ public class Monitor {
                 // schedule it...
                 executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );
 
-                // stagger the start of the next monitor by a couple minutes...
+                // stagger the start of the next monitor by a couple of minutes...
                 startDelay = startDelay.plus( Duration.ofMinutes( 2 ) );
             }
         }
