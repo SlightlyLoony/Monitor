@@ -2,5 +2,5 @@ package com.dilatush.monitor.monitors;
 
 public enum YoLinkTriggerType {
 
-    AT_LEAST, BELOW, IN, OUT;
+    ABOVE, BELOW, IN, OUT;
 }

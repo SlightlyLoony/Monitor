@@ -36,9 +36,11 @@ public class YoLink extends AMonitor {
     private final String clientID;
     private final String secret;
 
+    private final List<YoLinkTriggerDef> triggers;
+    private final Map<String,Boolean> previous;
+
     private String  accessToken;
     private Instant accessTokenExpires;
-    private List<YoLinkTriggerDef> triggers;
 
 
     /**
@@ -56,6 +58,8 @@ public class YoLink extends AMonitor {
         clientID  = (String) _params.get( "clientID" );
         secret    = (String) _params.get( "secret"   );
         var trigs = _params.get( "triggers" );
+
+        previous = new HashMap<>();
 
         if( isNull( clientID, secret ) ) throw new IllegalArgumentException( "clientID and secret parameters must be supplied" );
 
@@ -109,33 +113,38 @@ public class YoLink extends AMonitor {
         // iterate over all our triggers...
         for( YoLinkTriggerDef trigger : triggers ) {
 
-            // handle a value trigger...
-            if( trigger.klass() == YoLinkTriggerClass.VALUE ) {
+            // get the current value...
+            var value = getCurrentValue( _statesByName, trigger );
 
-                // get the current value...
-                var value = getCurrentValue( _statesByName, trigger );
+            // get the previous and current trigger values...
+            var prevTriggerName = trigger.eventTag() + "." + trigger.sensorName();
+            var prevTrigger = previous.get( prevTriggerName );
+            var currTrigger = evaluateTrigger( value, trigger );
+            if( prevTrigger == null ) prevTrigger = currTrigger;
 
-                // if it evaluates as true, then send our event...
-                if( evaluateTrigger( value, trigger ) ) sendEvent( value, trigger );
-            }
+            // figure out whether to send an event...
+            var sendIt =
+                    ((trigger.klass() == YoLinkTriggerClass.VALUE) && currTrigger) ||
+                    ((trigger.klass() == YoLinkTriggerClass.TRANSITION) && currTrigger && !prevTrigger );
+            if( sendIt ) sendEvent( value, trigger );
 
-            // otherwise, we have a transition trigger...
-            else {
-
-            }
+            // update our previous trigger value...
+            previous.put( prevTriggerName, currTrigger );
         }
     }
 
 
     private void sendEvent( final double _value, final YoLinkTriggerDef _trigger ) {
 
-        // construct a formatted value, with units...
-        var units = ((_trigger.field() == YoLinkTriggerField.TEMPERATURE) ? "°F" : "%" );
-        var val   = String.format( " (%.1f" + units + ")", _value );
-        var msg = _trigger.eventMessage() + val;
+        // construct the subject and message, which may include the current value, lower bound, and upper bound...
+        var subject = String.format( _trigger.eventSubject(), _value, _trigger.lowerBound(), _trigger.upperBound(), _trigger.sensorName() );
+        var message = String.format( _trigger.eventMessage(), _value, _trigger.lowerBound(), _trigger.upperBound(), _trigger.sensorName() );
+
+        LOGGER.finest( "Event subject: " + subject );
+        LOGGER.finest( "Event message: " + message );
 
         // send the event...
-        sendEvent( _trigger.minInterval(), _trigger.eventTag(), _trigger.sensorName(), _trigger.eventSubject(), msg, _trigger.eventLevel() );
+        sendEvent( _trigger.minInterval(), _trigger.eventTag(), _trigger.sensorName(), subject, message, _trigger.eventLevel() );
     }
 
 
@@ -144,7 +153,7 @@ public class YoLink extends AMonitor {
             case IN       -> (_value >= _trigger.lowerBound() && (_value <= _trigger.upperBound() ) );
             case OUT      -> (_value <  _trigger.lowerBound() || (_value >  _trigger.upperBound() ) );
             case BELOW    -> (_value <  _trigger.lowerBound() );
-            case AT_LEAST -> (_value >= _trigger.upperBound() );
+            case ABOVE    -> (_value >  _trigger.upperBound() );
         };
     }
 

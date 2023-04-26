@@ -45,12 +45,31 @@ public class MonitorConfigurator implements Configurator {
 
         // YoLink configuration...
         var triggers = new ArrayList<YoLinkTriggerDef>();
-        triggers.add( new YoLinkTriggerDef( "Office", 100, YoLinkTriggerType.BELOW, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
-                "YoLink.below50", "Office too cold", "Office temperature is too low: %.1f °F.", 8, null ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Office", 50, YoLinkTriggerType.BELOW, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "YoLink.tooCold", "Office too cold: %1$.1f°F.", "Office temperature is below %2$.1f°F: %1$.1f°F.", 8, Duration.ofHours( 1 ) ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Deck", 32, YoLinkTriggerType.BELOW, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.TRANSITION,
+                "YoLink.frost", "Frost warning: %1$.1f°F.", "Outside (deck) temperature went below freezing: %1$.1f°F.", 6, null ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Kitchen Freezer", 20, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "YoLink.freezerOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, Duration.ofMinutes( 30 ) ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Garage Freezer", 10, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "YoLink.freezerOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, null ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Shed Freezer", 10, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "YoLink.freezerOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, null ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Kitchen Refrigerator", 40, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "YoLink.refrigeratorOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, Duration.ofMinutes( 30 ) ) );
+        triggers.add( new YoLinkTriggerDef(
+                "Office", 90, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "YoLink.tooWarm", "Office too warm: %1$.1f°F.", "Office temperature is above %3$.1f°F: %1$.1f°F.", 8, Duration.ofHours( 1 ) ) );
         params = new HashMap<>();
         params.put( "clientID", === YoLink client ID === );
         params.put( "secret"  , === YoLink secret ===    );
         params.put( "triggers", triggers                 );
-        config.monitors.add( new MonitorInstance( YoLink.class, params, Duration.ofMinutes( 15 ) ) );
+        config.monitors.add( new MonitorInstance( YoLink.class, params, Duration.ofMinutes( 1 ) ) );
     }
 }
