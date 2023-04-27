@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.dilatush.util.Conversions.fromCtoF;
@@ -33,11 +34,11 @@ public class YoLink extends AMonitor {
 
     // TODO: add statistics to table through events...
     // TODO: add status to web site...
+    // TODO: finish commenting...
     // TODO: handle status for offline sensors...
     // TODO: handle statistics for offline sensors...
     // TODO: get new sensors for barn, shed, house...
     // TODO: get YoLink events into database...
-    // TODO: handle API failure...
 
     private final Logger LOGGER = getLogger();
 
@@ -106,7 +107,10 @@ public class YoLink extends AMonitor {
             sendStatus( states, statesByName );
         }
         catch( Exception _e ) {
-            throw new RuntimeException( _e );
+
+            LOGGER.log( Level.SEVERE, "Failed while querying YoLink API: " + _e.getMessage(), _e );
+
+            sendEvent( "YoLink.apiFail", "?", "Failure querying YoLink API", "Failure while querying YoLink API: " + _e.getMessage(), 8 );
         }
     }
 
