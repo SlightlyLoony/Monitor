@@ -13,12 +13,73 @@ This monitors my TF-1006-PRO NTP server.
 |Tag|Description
 |NTPServer.readFailure
 |Sent at most once per hour when the monitor is unable to read status information from the TF-1006-PRO NTP server.
+|NTPServer.referenceDown
+|The reference clock in the TF-1006-PRO NTP server is not locked; its previous state is unknown.
+|NTPServer.referenceUp
+|The reference clock in the TF-1006-PRO NTP server is locked; its previous state is unknown.
+|NTPServer.referenceWentDown
+|The reference clock in the TF-1006-PRO NTP server was locked, but now is not.
+|NTPServer.referenceWentUp
+|The reference clock in the TF-1006-PRO NTP server was not locked, but now is.
+|NTPServer.ntpDown
+|
+|NTPServer.ntpUp
+|
+|NTPServer.ntpWentDown
+|
+|NTPServer.ntpWentUp
+|
+|NTPServer.tieDown
+|
+|NTPServer.tieUp
+|
+|NTPServer.tieWentDown
+|
+|NTPServer.tieWentUp
+|
+|NTPServer.satsUsedOOB
+|
+|NTPServer.satsUsedIB
+|
+|NTPServer.satsUsedWentOOB
+|
+|NTPServer.satsUsedWentIB
+|
+|NTPServer.satsVisibleOOB
+|
+|NTPServer.satsVisibleIB
+|
+|NTPServer.satsVisibleWentOOB
+|
+|NTPServer.satsVisibleWentIB
+|
+|NTPServer.antennaNotOk
+|
+|NTPServer.antennaOk
+|
+|NTPServer.antennaWentNotOk
+|
+|NTPServer.antennaWentOk
+|
 |===
 
+==== YoLink
+
+This monitors over a dozen YoLink temperature and humidity sensors.
+
+.MOP events produced
+[cols="1,1,3"]
+|===
+|Tag|Type|Description
+|YoLink.offline
+|sensor name
+|Sent at most once per hour when the given sensor is offline.
+|
+|===
 
 == Dependencies
 
-_EmailService_ has several dependencies:
+_Monitor_ has several dependencies:
 
 * _Util_ is an utilities module the author also wrote, freely available from https://github.com/SlightlyLoony/Util[here].
 * _MOP_ is the bog-standard Java JSON module, freely available from https://github.com/stleary/JSON-java[here].

@@ -16,7 +16,6 @@ import static com.dilatush.util.General.getLogger;
 
 public class Monitor {
 
-    // TODO: move formatted temperature and humidity to configuration...
 
     public static void main( String[] args ) {
 

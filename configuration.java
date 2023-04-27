@@ -36,12 +36,7 @@ public class MonitorConfigurator implements Configurator {
 
         //////////// Monitors Configuration //////////////
 
-        // NTPServer configuration...
-        Map<String,Object> params = new HashMap<>();
-        params.put( "URL",      "http://ntpserver.dilatush.com" );
-        params.put( "username", "admin"                         );
-        params.put( "password", === NTP server password ===     );
-        config.monitors.add( new MonitorInstance( NTPServer.class, params, Duration.ofMinutes( 1 ) ) );
+        Map<String,Object> params;
 
         // YoLink configuration...
         var triggers = new ArrayList<YoLinkTriggerDef>();
@@ -66,10 +61,26 @@ public class MonitorConfigurator implements Configurator {
         triggers.add( new YoLinkTriggerDef(
                 "Office", 90, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
                 "YoLink.tooWarm", "Office too warm: %1$.1f°F.", "Office temperature is above %3$.1f°F: %1$.1f°F.", 8, Duration.ofHours( 1 ) ) );
+        triggers.add( new YoLinkTriggerDef(
+                "?", 0.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.ONLINE, YoLinkTriggerClass.VALUE,
+                "YoLink.offline", "%4$s offline.", "YoLink sensor %4$s is offline.", 8, Duration.ofHours( 2 ) ) );
+        triggers.add( new YoLinkTriggerDef(
+                "?", 2.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.BATTERY, YoLinkTriggerClass.VALUE,
+                "YoLink.lowBattery", "%4$s battery low.", "YoLink sensor %4$s battery is low.", 5, Duration.ofHours( 24 ) ) );
+        triggers.add( new YoLinkTriggerDef(
+                "?", 1.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.BATTERY, YoLinkTriggerClass.VALUE,
+                "YoLink.criticalLowBattery", "%4$s battery critically low.", "YoLink sensor %4$s battery is critically low.", 8, Duration.ofHours( 3 ) ) );
         params = new HashMap<>();
         params.put( "clientID", === YoLink client ID === );
         params.put( "secret"  , === YoLink secret ===    );
         params.put( "triggers", triggers                 );
         config.monitors.add( new MonitorInstance( YoLink.class, params, Duration.ofMinutes( 1 ) ) );
+
+        // NTPServer configuration...
+        params = new HashMap<>();
+        params.put( "URL",      "http://ntpserver.dilatush.com" );
+        params.put( "username", "admin"                         );
+        params.put( "password", === NTP server password ===     );
+        config.monitors.add( new MonitorInstance( NTPServer.class, params, Duration.ofMinutes( 1 ) ) );
     }
 }

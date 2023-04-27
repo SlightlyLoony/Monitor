@@ -1,5 +1,5 @@
 package com.dilatush.monitor.monitors;
 
 public enum YoLinkTriggerField {
-    TEMPERATURE, HUMIDITY;
+    TEMPERATURE, HUMIDITY, BATTERY, ONLINE;
 }

@@ -72,8 +72,11 @@ public abstract class AMonitor implements Runnable {
             return;
         }
 
+        // construct the index...
+        var index = _tag + "." + _type;
+
         // if we have a time an event with this tag was last sent...
-        var timeSent = tagLastSentMap.get( _tag );
+        var timeSent = tagLastSentMap.get( index );
         if( timeSent != null ) {
 
             // if we're within the minimum interval between events, just leave...
@@ -83,7 +86,7 @@ public abstract class AMonitor implements Runnable {
 
         // if we get here, we should send the event and record the time we did so...
         sendEvent( _tag, _type, _subject, _message, _level );
-        tagLastSentMap.put( _tag, Instant.now().plus( _minInterval ) );
+        tagLastSentMap.put( index, Instant.now().plus( _minInterval ) );
     }
 
 

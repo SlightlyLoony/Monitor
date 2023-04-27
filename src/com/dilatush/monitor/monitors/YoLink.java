@@ -31,6 +31,14 @@ import static java.lang.Thread.sleep;
  */
 public class YoLink extends AMonitor {
 
+    // TODO: add statistics to table through events...
+    // TODO: add status to web site...
+    // TODO: handle status for offline sensors...
+    // TODO: handle statistics for offline sensors...
+    // TODO: get new sensors for barn, shed, house...
+    // TODO: get YoLink events into database...
+    // TODO: handle API failure...
+
     private final Logger LOGGER = getLogger();
 
     private final String clientID;
@@ -57,7 +65,7 @@ public class YoLink extends AMonitor {
 
         clientID  = (String) _params.get( "clientID" );
         secret    = (String) _params.get( "secret"   );
-        var trigs = _params.get( "triggers" );
+        var triggersParam = _params.get( "triggers" );
 
         previous = new HashMap<>();
 
@@ -65,9 +73,9 @@ public class YoLink extends AMonitor {
 
         triggers = new ArrayList<>();
 
-        if( trigs != null ) {
+        if( triggersParam != null ) {
 
-            if( !(trigs instanceof List<?> triggersRaw) ) throw new IllegalArgumentException( "triggers parameter supplied, but is not a List" );
+            if( !(triggersParam instanceof List<?> triggersRaw) ) throw new IllegalArgumentException( "triggers parameter supplied, but is not a List" );
 
             for( var trig : triggersRaw ) {
 
@@ -113,38 +121,54 @@ public class YoLink extends AMonitor {
         // iterate over all our triggers...
         for( YoLinkTriggerDef trigger : triggers ) {
 
-            // get the current value...
-            var value = getCurrentValue( _statesByName, trigger );
+            // iterate over all sensors, or just the named sensor...
+            var sensorStates = new ArrayList<String>();
+            if( "?".equals( trigger.sensorName() ) )
+                for( var state : _states ) sensorStates.add( state.device.name );
+            else
+                sensorStates.add( trigger.sensorName() );
+            for( var sensorName : sensorStates ) {
 
-            // get the previous and current trigger values...
-            var prevTriggerName = trigger.eventTag() + "." + trigger.sensorName();
-            var prevTrigger = previous.get( prevTriggerName );
-            var currTrigger = evaluateTrigger( value, trigger );
-            if( prevTrigger == null ) prevTrigger = currTrigger;
+                // get the sensor state...
+                var sensorState = _statesByName.get( sensorName );
 
-            // figure out whether to send an event...
-            var sendIt =
-                    ((trigger.klass() == YoLinkTriggerClass.VALUE) && currTrigger) ||
-                    ((trigger.klass() == YoLinkTriggerClass.TRANSITION) && currTrigger && !prevTrigger );
-            if( sendIt ) sendEvent( value, trigger );
+                // if there is no sensor state, or if this sensor is offline, and we're not checking the online field, bail out...
+                if( (sensorState == null) || ((!sensorState.online) && (trigger.field() != YoLinkTriggerField.ONLINE) ) )
+                    continue;
 
-            // update our previous trigger value...
-            previous.put( prevTriggerName, currTrigger );
+                // get the current value...
+                var value = getCurrentValue( sensorState, trigger.field() );
+
+                // get the previous and current trigger values...
+                var prevTriggerName = trigger.eventTag() + "." + sensorName;
+                var prevTrigger = previous.get( prevTriggerName );
+                var currTrigger = evaluateTrigger( value, trigger );
+                if( prevTrigger == null ) prevTrigger = currTrigger;
+
+                // figure out whether to send an event...
+                var sendIt =
+                        ((trigger.klass() == YoLinkTriggerClass.VALUE) && currTrigger) ||
+                                ((trigger.klass() == YoLinkTriggerClass.TRANSITION) && currTrigger && !prevTrigger);
+                if( sendIt ) {
+                    sendEvent( value, sensorName, trigger );
+                    LOGGER.finest( "Sent event " + trigger.eventTag() + " for " + sensorName );
+                }
+
+                // update our previous trigger value...
+                previous.put( prevTriggerName, currTrigger );
+            }
         }
     }
 
 
-    private void sendEvent( final double _value, final YoLinkTriggerDef _trigger ) {
+    private void sendEvent( final double _value, final String _sensorName, final YoLinkTriggerDef _trigger ) {
 
         // construct the subject and message, which may include the current value, lower bound, and upper bound...
-        var subject = String.format( _trigger.eventSubject(), _value, _trigger.lowerBound(), _trigger.upperBound(), _trigger.sensorName() );
-        var message = String.format( _trigger.eventMessage(), _value, _trigger.lowerBound(), _trigger.upperBound(), _trigger.sensorName() );
-
-        LOGGER.finest( "Event subject: " + subject );
-        LOGGER.finest( "Event message: " + message );
+        var subject = String.format( _trigger.eventSubject(), _value, _trigger.lowerBound(), _trigger.upperBound(), _sensorName );
+        var message = String.format( _trigger.eventMessage(), _value, _trigger.lowerBound(), _trigger.upperBound(), _sensorName );
 
         // send the event...
-        sendEvent( _trigger.minInterval(), _trigger.eventTag(), _trigger.sensorName(), subject, message, _trigger.eventLevel() );
+        sendEvent( _trigger.minInterval(), _trigger.eventTag(), _sensorName, subject, message, _trigger.eventLevel() );
     }
 
 
@@ -158,11 +182,25 @@ public class YoLink extends AMonitor {
     }
 
 
-    private double getCurrentValue( final Map<String,THState> _statesByName, final YoLinkTriggerDef _trigger ) {
-        var state = _statesByName.get( _trigger.sensorName() );
-        return switch( _trigger.field() ) {
-            case HUMIDITY -> state.humidity;
-            case TEMPERATURE -> state.temperature;
+    /**
+     * Returns the current value of the given sensor and field.  The value returned depends on the field:
+     * <ul>
+     *     <li>HUMIDITY: relative percentage, from 0.0 to 100.0.</li>
+     *     <li>TEMPERATURE: degrees Fahrenheit, from -20.0°F to 120.0°F.</li>
+     *     <li>BATTERY: levels of 0, 1, 2, 3, or 4.</li>
+     *     <li>ONLINE: 0 for offline, 1 for online.</li>
+     * </ul>
+     *
+     * @param _state The current state of the sensor.
+     * @param _field The field whose value is desired: HUMIDITY, TEMPERATURE, BATTERY, or ONLINE.
+     * @return The value of the given field in the given sensor state.
+     */
+    private double getCurrentValue( final THState _state, final YoLinkTriggerField _field ) {
+        return switch( _field ) {
+            case HUMIDITY    -> _state.humidity;
+            case TEMPERATURE -> _state.temperature;
+            case BATTERY     -> _state.battery;
+            case ONLINE      -> _state.online ? 1 : 0;
         };
     }
 
@@ -290,6 +328,7 @@ public class YoLink extends AMonitor {
     /**
      * This stub main is here for troubleshooting only - using it you can run the monitor just once, from a development machine.
      */
+    @SuppressWarnings( "DuplicatedCode" )
     public static void main( final String[] _args ) throws InterruptedException {
 
         Config config = new Config();
