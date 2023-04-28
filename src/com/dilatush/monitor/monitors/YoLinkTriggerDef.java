@@ -19,11 +19,13 @@ public record YoLinkTriggerDef(
     /**
      * Create a new instance of this class with the given values.
      *
-     * @param sensorName The user-defined name (as it appears in the YoLink app) of the sensor whose reading triggers this event.
+     * @param sensorName The user-defined name(s) (as they appear in the YoLink app) of the sensor(s) whose reading triggers this event.  This field may contain a
+     *                   single device name, a comma-separated list of device names, or a single "?" (which means all sensors).
      * @param lowerBound The lower bound for IN and OUT comparisons, and the bound for LOWER comparisons.
      * @param upperBound The upper bound for IN and OUT comparisons, and the bound for ABOVE comparisons.
-     * @param type The type of comparison: IN, OUT, ABOVE, or BELOW.
-     * @param field The field (TEMPERATURE or HUMIDITY) to compare.
+     * @param type The type of comparison: EQUAL, UNEQUAL, IN, OUT, ABOVE, or BELOW.
+     * @param field The field (TEMPERATURE, HUMIDITY, BATTERY, or ONLINE) to compare.  TEMPERATURE is in °F, HUMIDITY in % relative humidity, BATTERY an integer
+     *              value in [0..4] (where 4 is full battery), and ONLINE is 0 if the sensor is offline or 1 if it is online.
      * @param klass The class of trigger: TRANSITION (from false to true comparison on sequential readings) or VALUE (current reading).
      * @param eventTag The MOP event tag for the event triggered.
      * @param eventSubject The MOP event subject for the event triggered.  This is a {@code printf} string with the values for the current reading, the lower bound, and the upper
@@ -48,10 +50,12 @@ public record YoLinkTriggerDef(
     /**
      * Create a new instance of this class with the given values.
      *
-     * @param sensorName The user-defined name (as it appears in the YoLink app) of the sensor whose reading triggers this event.
+     * @param sensorName The user-defined name(s) (as they appear in the YoLink app) of the sensor(s) whose reading triggers this event.  This field may contain a
+     *                   single device name, a comma-separated list of device names, or a single "?" (which means all sensors).
      * @param bound The lower and upper bound for IN and OUT comparisons, and the bound for ABOVE or LOWER comparisons.
-     * @param type The type of comparison: IN, OUT, ABOVE, or BELOW.
-     * @param field The field (TEMPERATURE or HUMIDITY) to compare.
+     * @param type The type of comparison: EQUAL, UNEQUAL, IN, OUT, ABOVE, or BELOW.
+     * @param field The field (TEMPERATURE, HUMIDITY, BATTERY, or ONLINE) to compare.  TEMPERATURE is in °F, HUMIDITY in % relative humidity, BATTERY an integer
+     *              value in [0..4] (where 4 is full battery), and ONLINE is 0 if the sensor is offline or 1 if it is online.
      * @param klass The class of trigger: TRANSITION (from false to true comparison on sequential readings) or VALUE (current reading).
      * @param eventTag The MOP event tag for the event triggered.
      * @param eventSubject The MOP event subject for the event triggered.  This is a {@code printf} string with the values for the current reading, the lower bound, and the upper
