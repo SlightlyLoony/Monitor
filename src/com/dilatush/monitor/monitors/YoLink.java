@@ -2,6 +2,7 @@ package com.dilatush.monitor.monitors;
 
 import com.dilatush.monitor.Config;
 import com.dilatush.mop.Mailbox;
+import com.dilatush.mop.Message;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
 import com.dilatush.util.Outcome;
@@ -29,13 +30,11 @@ import static java.lang.Thread.sleep;
  */
 public class YoLink extends AMonitor {
 
-    // TODO: add statistics to table through events...
     // TODO: add status to web site...
     // TODO: finish commenting...
     // TODO: handle status for offline sensors...
-    // TODO: handle statistics for offline sensors...
     // TODO: get new sensors for barn, shed, house...
-    // TODO: get YoLink events into database...
+
 
     private final Logger LOGGER = getLogger();
 
@@ -100,6 +99,7 @@ public class YoLink extends AMonitor {
             var statesByName = new HashMap<String,THState>();
             for( var state : states ) statesByName.put( state.device.name, state );
 
+            sendStatistics( states );
             sendEvents( states, statesByName );
             sendStatus( states, statesByName );
         }
@@ -108,6 +108,26 @@ public class YoLink extends AMonitor {
             LOGGER.log( Level.SEVERE, "Failed while querying YoLink API: " + _e.getMessage(), _e );
 
             sendEvent( "YoLink.apiFail", "?", "Failure querying YoLink API", "Failure while querying YoLink API: " + _e.getMessage(), 8 );
+        }
+    }
+
+
+    private void sendStatistics( final List<THState> _states ) {
+
+        for( var state : _states ) {
+
+            // build our event message...
+            Message msg = mailbox.createDirectMessage( "events.post", "event.post", false );
+            msg.putDotted( "tag", "YoLink_stats" );
+            msg.putDotted( "timestamp", System.currentTimeMillis() );
+            msg.putDotted( "fields.device_name", state.device.name );
+            msg.putDotted( "fields.model", state.device.model );
+            msg.putDotted( "fields.humidity", state.humidity + state.humidityCorrection );
+            msg.putDotted( "fields.temperature", state.temperature + state.tempCorrection );
+            msg.putDotted( "fields.battery", state.battery );
+
+            // send it!
+            mailbox.send( msg );
         }
     }
 
@@ -132,11 +152,17 @@ public class YoLink extends AMonitor {
 
                 LOGGER.finest( "Working on " + sensorName + " for trigger " + trigger.eventTag() );
 
-                // get the sensor state...
+                // attempt to get the sensor state...
                 var sensorState = _statesByName.get( sensorName );
 
-                // if there is no sensor state, or if this sensor is offline, and we're not checking the online field, bail out...
-                if( (sensorState == null) || ((!sensorState.online) && (trigger.field() != YoLinkTriggerField.ONLINE) ) )
+                // if we don't have a sensor state, then a name in a trigger doesn't exist in the YoLink data...
+                if( sensorState == null ) {
+                    LOGGER.log( Level.WARNING, "Device name does not appear in YoLink data: " + sensorName );
+                    continue;
+                }
+
+                // if this sensor is offline, and we're not checking the online field, bail out...
+                if( ((!sensorState.online) && (trigger.field() != YoLinkTriggerField.ONLINE) ) )
                     continue;
 
                 // get the current value...
@@ -151,7 +177,9 @@ public class YoLink extends AMonitor {
                 // figure out whether to send an event...
                 var sendIt =
                         ((trigger.klass() == YoLinkTriggerClass.VALUE) && currTrigger) ||
-                                ((trigger.klass() == YoLinkTriggerClass.TRANSITION) && currTrigger && !prevTrigger);
+                        ((trigger.klass() == YoLinkTriggerClass.TRANSITION) && currTrigger && !prevTrigger);
+
+                // if we should, send the event...
                 if( sendIt ) {
                     sendEvent( value, sensorName, trigger );
                     LOGGER.finest( "Sent event " + trigger.eventTag() + " for " + sensorName );
@@ -202,8 +230,8 @@ public class YoLink extends AMonitor {
      */
     private double getCurrentValue( final THState _state, final YoLinkTriggerField _field ) {
         return switch( _field ) {
-            case HUMIDITY    -> _state.humidity;
-            case TEMPERATURE -> _state.temperature;
+            case HUMIDITY    -> _state.humidity + _state.humidityCorrection;
+            case TEMPERATURE -> _state.temperature + _state.tempCorrection;
             case BATTERY     -> _state.battery;
             case ONLINE      -> _state.online ? 1 : 0;
         };

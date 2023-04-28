@@ -63,7 +63,7 @@ public class MonitorConfigurator implements Configurator {
                 "YoLink.offline", "%4$s offline.", "YoLink sensor %4$s is offline.", 8, Duration.ofHours( 2 ) ) );
         triggers.add( new YoLinkTriggerDef(
                 "?", 2.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.BATTERY, YoLinkTriggerClass.VALUE,
-                "YoLink.lowBattery", "%4$s battery low.", "YoLink sensor %4$s battery is low.", 5, Duration.ofHours( 24 ) ) );
+                "YoLink.lowBattery", "%4$s battery low.", "YoLink sensor %4$s battery is low: %1$.0f of 4.", 5, Duration.ofHours( 24 ) ) );
         triggers.add( new YoLinkTriggerDef(
                 "?", 1.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.BATTERY, YoLinkTriggerClass.VALUE,
                 "YoLink.criticalLowBattery", "%4$s battery critically low.", "YoLink sensor %4$s battery is critically low.", 8, Duration.ofHours( 3 ) ) );
