@@ -50,10 +50,7 @@ public class MonitorConfigurator implements Configurator {
                 "Kitchen Freezer", 20, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
                 "YoLink.freezerOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, Duration.ofMinutes( 30 ) ) );
         triggers.add( new YoLinkTriggerDef(
-                "Garage Freezer", 10, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
-                "YoLink.freezerOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, null ) );
-        triggers.add( new YoLinkTriggerDef(
-                "Shed Freezer", 10, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
+                "Garage Freezer,Shed Freezer", 10, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
                 "YoLink.freezerOverTemp", "%4$s too warm: %1$.1f°F.", "%4$s temperature above %2$.1f°F: %1$.1f°F.", 8, null ) );
         triggers.add( new YoLinkTriggerDef(
                 "Kitchen Refrigerator", 40, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,

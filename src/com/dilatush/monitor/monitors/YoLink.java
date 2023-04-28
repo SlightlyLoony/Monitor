@@ -14,10 +14,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,6 +31,7 @@ public class YoLink extends AMonitor {
 
     // TODO: add statistics to table through events...
     // TODO: add status to web site...
+    // TODO: add EQUALS...
     // TODO: finish commenting...
     // TODO: handle status for offline sensors...
     // TODO: handle statistics for offline sensors...
@@ -130,8 +128,10 @@ public class YoLink extends AMonitor {
             if( "?".equals( trigger.sensorName() ) )
                 for( var state : _states ) sensorStates.add( state.device.name );
             else
-                sensorStates.add( trigger.sensorName() );
+                sensorStates.addAll( Arrays.asList( trigger.sensorName().split( "," ) ) );
             for( var sensorName : sensorStates ) {
+
+                LOGGER.finest( "Working on " + sensorName + " for trigger " + trigger.eventTag() );
 
                 // get the sensor state...
                 var sensorState = _statesByName.get( sensorName );
@@ -335,13 +335,18 @@ public class YoLink extends AMonitor {
     @SuppressWarnings( "DuplicatedCode" )
     public static void main( final String[] _args ) throws InterruptedException {
 
+        // set the configuration file location (must do before any logging actions occur)...
+        System.getProperties().setProperty( "java.util.logging.config.file", "logging.properties" );
+        //noinspection unused
+        Logger LOGGER = getLogger();
+
         Config config = new Config();
         Outcome<?> result = config.init( "MonitorConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
         if( result.notOk() ) throw new IllegalArgumentException( "bad configuration" );
         PostOffice po = new PostOffice( config.postOfficeConfig );
         Mailbox mailbox = po.createMailbox( "monitor" );
 
-        var mi = config.monitors.get( 1 );
+        var mi = config.monitors.get( 0 );
         var mon = new YoLink( mailbox, mi.parameters() );
 
         mon.run();
