@@ -59,7 +59,7 @@ public class MonitorConfigurator implements Configurator {
                 "Office", 90, YoLinkTriggerType.ABOVE, YoLinkTriggerField.TEMPERATURE, YoLinkTriggerClass.VALUE,
                 "YoLink.tooWarm", "Office too warm: %1$.1f°F.", "Office temperature is above %3$.1f°F: %1$.1f°F.", 8, Duration.ofHours( 1 ) ) );
         triggers.add( new YoLinkTriggerDef(
-                "?", 0.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.ONLINE, YoLinkTriggerClass.VALUE,
+                "?", 0D, YoLinkTriggerType.EQUAL, YoLinkTriggerField.ONLINE, YoLinkTriggerClass.VALUE,
                 "YoLink.offline", "%4$s offline.", "YoLink sensor %4$s is offline.", 8, Duration.ofHours( 2 ) ) );
         triggers.add( new YoLinkTriggerDef(
                 "?", 2.5D, YoLinkTriggerType.BELOW, YoLinkTriggerField.BATTERY, YoLinkTriggerClass.VALUE,
