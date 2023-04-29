@@ -30,11 +30,6 @@ import static java.lang.Thread.sleep;
  */
 public class YoLink extends AMonitor {
 
-    // TODO: add status to web site...
-    // TODO: finish commenting...
-    // TODO: handle status for offline sensors...
-    // TODO: get new sensors for barn, shed, house...
-
 
     private final Logger LOGGER = getLogger();
 
@@ -101,7 +96,7 @@ public class YoLink extends AMonitor {
 
             sendStatistics( states );
             sendEvents( states, statesByName );
-            sendStatus( states, statesByName );
+            sendStatus( states );
         }
         catch( Exception _e ) {
 
@@ -112,19 +107,25 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Send an event for each of the given sensor states containing the statistics to be inserted into a database.
+     *
+     * @param _states The current state of the sensors as reported by the YoLink API.
+     */
     private void sendStatistics( final List<THState> _states ) {
 
+        // for each given state...
         for( var state : _states ) {
 
             // build our event message...
             Message msg = mailbox.createDirectMessage( "events.post", "event.post", false );
-            msg.putDotted( "tag", "YoLink_stats" );
-            msg.putDotted( "timestamp", System.currentTimeMillis() );
-            msg.putDotted( "fields.device_name", state.device.name );
-            msg.putDotted( "fields.model", state.device.model );
-            msg.putDotted( "fields.humidity", state.humidity + state.humidityCorrection );
-            msg.putDotted( "fields.temperature", state.temperature + state.tempCorrection );
-            msg.putDotted( "fields.battery", state.battery );
+            msg.putDotted( "tag",                "YoLink_stats"                            );
+            msg.putDotted( "timestamp",          System.currentTimeMillis()                );
+            msg.putDotted( "fields.device_name", state.device.name                         );
+            msg.putDotted( "fields.model",       state.device.model                        );
+            msg.putDotted( "fields.humidity",    state.humidity + state.humidityCorrection );
+            msg.putDotted( "fields.temperature", state.temperature + state.tempCorrection  );
+            msg.putDotted( "fields.battery",     state.battery                             );
 
             // send it!
             mailbox.send( msg );
@@ -132,11 +133,45 @@ public class YoLink extends AMonitor {
     }
 
 
-    private void sendStatus( final List<THState> _states, final Map<String,THState> _statesByName ) {
+    /**
+     * Publish a monitor message with the given states of the YoLink sensors.
+     *
+     * @param _states The current state of the YoLink sensors as reported by the YoLink API.
+     */
+    private void sendStatus( final List<THState> _states ) {
 
+        // create our status message...
+        var message = mailbox.createPublishMessage( "yolink.monitor" );
+
+        // fill in the data...
+        JSONObject sensors = new JSONObject();
+        message.putDotted( "monitor.yolink.sensors",  sensors );
+        for( var state : _states ) {
+
+            // fill in one sensor...
+            var sensor = new JSONObject();
+            sensor.put( "online",      state.online                              );
+            sensor.put( "temperature", state.temperature + state.tempCorrection  );
+            sensor.put( "humidity",    state.humidity + state.humidityCorrection );
+            sensor.put( "battery",     state.battery                             );
+            sensor.put( "name",        state.device.name                         );
+            sensor.put( "model",       state.device.model                        );
+
+            // stuff it into our sensors object...
+            sensors.put( sensor.getString( "name" ), sensor );
+        }
+
+        // send it!
+        mailbox.send( message );
     }
 
 
+    /**
+     * Send events for any sensor whose current state and historical state match one of the triggers.
+     *
+     * @param _states The current state of the YoLink sensors as reported by the YoLink API.
+     * @param _statesByName The current states mapped by device name.
+     */
     private void sendEvents( final List<THState> _states, final Map<String,THState> _statesByName ) {
 
         // iterate over all our triggers...
@@ -192,6 +227,13 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Send a triggered event.
+     *
+     * @param _value The current value of the sensor that is being triggered.
+     * @param _sensorName The name of the sensor being triggered.
+     * @param _trigger The trigger causing the event to be sent.
+     */
     private void sendEvent( final double _value, final String _sensorName, final YoLinkTriggerDef _trigger ) {
 
         // construct the subject and message, which may include the current value, lower bound, and upper bound...
@@ -203,6 +245,13 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Evaluate the given trigger for the given value.
+     *
+     * @param _value The value to use when evaluating the trigger.
+     * @param _trigger The trigger to evaluate.
+     * @return {@code true} if the trigger evaluates as true.
+     */
     private boolean evaluateTrigger( final double _value, final YoLinkTriggerDef _trigger ) {
         return switch( _trigger.type() ) {
             case IN       -> (_value >= _trigger.lowerBound() && (_value <= _trigger.upperBound() ) );
@@ -238,6 +287,14 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Use the YoLink API to retrieve the current state of the given devices, which must be temperature and humidity sensors.
+     *
+     * @param _devices The list of devices to retrieve the current state of.
+     * @return The list of the current states of the given devices.
+     * @throws IOException On any I/O problem.
+     * @throws JSONException On any JSON problem.
+     */
     private List<THState> getTempHumiditySensorsState( final List<Device> _devices ) throws IOException, JSONException {
 
         var result = new ArrayList<THState>();
@@ -272,9 +329,15 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Uses the YoLink API to retrieve the list of devices belonging to the configured client.
+     *
+     * @return The list of devices retrieved.
+     * @throws IOException On any I/O problem.
+     * @throws JSONException On any JSON problem.
+     */
     private List<Device> getDevices() throws IOException, JSONException {
 
-        //var req = "{\"method\":\"Home.getDeviceList\",\"time\":" + System.currentTimeMillis() + "}";
         var req = "{\"method\":\"Home.getDeviceList\"}";
         var resp = post( "https://api.yosmart.com/open/yolink/v2/api", req, "application/json", true );
 
@@ -304,6 +367,12 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Ensure that we have a current access token for the YoLink API.
+     *
+     * @throws IOException On any I/O problem.
+     * @throws JSONException On any JSON problem.
+     */
     private void ensureAccessToken() throws IOException, JSONException {
 
         // if we've already got a token, and it isn't near expiration, our work is done...
@@ -324,6 +393,17 @@ public class YoLink extends AMonitor {
     }
 
 
+    /**
+     * Send a POST request to the YoLink API.
+     *
+     * @param _url The URL to post to.
+     * @param _request The request to post.
+     * @param _contentType The content type of the request.
+     * @param _authorize {@code true} if the post should be authorized with the access token.
+     * @return The JSON response to the post.
+     * @throws IOException On any I/O problem.
+     * @throws JSONException On any JSON problem.
+     */
     private JSONObject post( final String _url, final String _request, final String _contentType, final boolean _authorize ) throws IOException, JSONException {
 
         URL url = new URL( _url );
@@ -341,6 +421,9 @@ public class YoLink extends AMonitor {
             byte[] input = _request.getBytes( StandardCharsets.UTF_8 );
             os.write( input, 0, input.length );
         }
+
+        if( con.getResponseCode() != 200 )
+            throw new IOException( "Response not ok: " + con.getResponseCode() );
 
         try( BufferedReader br = new BufferedReader( new InputStreamReader( con.getInputStream(), StandardCharsets.UTF_8 ) ) ) {
             StringBuilder response = new StringBuilder();
