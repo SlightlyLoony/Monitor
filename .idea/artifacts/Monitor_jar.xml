@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="Monitor:jar">
+    <output-path>$PROJECT_DIR$/out</output-path>
+    <root id="archive" name="Monitor.jar">
+      <element id="module-output" name="Monitor" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/../MOP/out/artifacts/MOP.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

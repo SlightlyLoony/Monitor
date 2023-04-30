@@ -1,12 +1,12 @@
 [Unit]
-Description=EmailService
+Description=Monitor
 After=syslog.target
 
 [Service]
 User=tom
 Type=simple
-WorkingDirectory=/apps/emailservice
-ExecStart=/usr/bin/java -jar /apps/emailservice/EmailService.jar
+WorkingDirectory=/apps/monitor
+ExecStart=/usr/bin/java -jar /apps/monitor/Monitor.jar
 Restart=always
 RestartSec=10
 

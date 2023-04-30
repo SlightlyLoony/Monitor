@@ -3,7 +3,7 @@
 # copy all the deployment files over to the Events server...
 scp out/Monitor.jar beast:/apps/monitor
 scp Monitor.service beast:/apps/monitor
-scp configuration.java beast:/apps/monitor
+scp configurationBeast.java beast:/apps/monitor/configuration.java
 scp credentials.txt beast:/apps/monitor
 scp logging.properties beast:/apps/monitor
 
