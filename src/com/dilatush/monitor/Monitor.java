@@ -53,10 +53,10 @@ public class Monitor {
             for( MonitorInstance mi : config.monitors ) {
 
                 // use reflection to get a constructor for our monitor...
-                var c = mi.monitorClass().getConstructor( Mailbox.class, Map.class );
+                var c = mi.monitorClass().getConstructor( Mailbox.class, Map.class, Duration.class );
 
                 // get our new monitor instance...
-                var monitor = c.newInstance( mailbox, mi.parameters() );
+                var monitor = c.newInstance( mailbox, mi.parameters(), mi.interval() );
 
                 // schedule it...
                 executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );

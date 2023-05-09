@@ -1,11 +1,7 @@
 package com.dilatush.monitor.monitors;
 
-import com.dilatush.monitor.Config;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
-import com.dilatush.mop.PostOffice;
-import com.dilatush.util.Files;
-import com.dilatush.util.Outcome;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -17,7 +13,10 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Duration;
@@ -30,7 +29,6 @@ import java.util.logging.Logger;
 import static com.dilatush.monitor.monitors.AMonitor.TriState.*;
 import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.General.isNull;
-import static java.lang.Thread.sleep;
 
 
 /**
@@ -62,9 +60,10 @@ public class NTPServer extends AMonitor {
      *
      * @param _mailbox The mailbox for this monitor to use.
      * @param _params The map of parameters, which must include "URL", "username", and "password".
+     * @param _interval the interval between runs for this monitor.
      */
-    public NTPServer( final Mailbox _mailbox, final Map<String,Object> _params ) {
-        super( _mailbox );
+    public NTPServer( final Mailbox _mailbox, final Map<String,Object> _params, final Duration _interval ) {
+        super( _mailbox, _interval );
 
         if( isNull( _params ) ) throw new IllegalArgumentException( "_params must be supplied" );
 
@@ -116,6 +115,9 @@ public class NTPServer extends AMonitor {
     private void sendStatus( final Scraping _scraping ) {
 
         Message msg = mailbox.createPublishMessage( "ntp.monitor" );
+
+        // send the message interval...
+        msg.putDotted( "monitor.ntp.messageIntervalMs",     interval.toMillis()        );
 
         // fill in our collected data...
         msg.putDotted( "monitor.ntp.uptimeHours",           _scraping.uptime           );
@@ -466,31 +468,6 @@ public class NTPServer extends AMonitor {
         private float   lon;         // longitude in degrees (+ for east, - for west)...
         private float   altitude;    // altitude in feet...
         private boolean antennaOK;   // true if the antenna is ok...
-    }
-
-
-    /**
-     * This stub main is here for troubleshooting only - using it you can run the monitor just once, from a development machine.
-     */
-    public static void main( final String[] _args ) throws InterruptedException {
-
-        Config config = new Config();
-        Outcome<?> result = config.init( "MonitorConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
-        if( result.notOk() ) throw new IllegalArgumentException( "bad configuration" );
-        PostOffice po = new PostOffice( config.postOfficeConfig );
-        Mailbox mailbox = po.createMailbox( "monitor" );
-
-        var mi = config.monitors.get( 0 );
-        var mon = new NTPServer( mailbox, mi.parameters() );
-        mon.run();
-
-        sleep( 5000 );
-
-        mon.run();
-        sleep( 5000 );
-
-        //noinspection ResultOfMethodCallIgnored
-        config.hashCode();
     }
 }
 

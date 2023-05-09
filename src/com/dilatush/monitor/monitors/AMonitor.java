@@ -19,6 +19,7 @@ public abstract class AMonitor implements Runnable {
 
     protected final Mailbox             mailbox;      // the mailbox for this monitor to use...
     protected final String              eventSource;  // the source for events from this monitor, in the form "monitor.<monitor class name>"...
+    protected final Duration            interval;     // the interval between runs for this monitor...
 
     // keeps track of the last time we sent a rate-limited event...
     protected final Map<String,Instant> tagLastSentMap;  // tag -> when last sent...
@@ -28,12 +29,14 @@ public abstract class AMonitor implements Runnable {
      * Creates a new instance of this class with the given Mailbox.
      *
      * @param _mailbox The mailbox for this monitor to use.
+     * @param _interval the interval between runs for this monitor.
      */
-    protected AMonitor( final Mailbox _mailbox ) {
+    protected AMonitor( final Mailbox _mailbox, final Duration _interval ) {
 
         if( isNull( _mailbox ) ) throw new IllegalArgumentException( "_mailbox must be provided" );
 
         mailbox         = _mailbox;
+        interval        = _interval;
         eventSource     = "monitor." + getClass().getSimpleName();
         tagLastSentMap  = new HashMap<>();
     }

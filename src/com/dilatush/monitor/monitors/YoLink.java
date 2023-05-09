@@ -1,15 +1,14 @@
 package com.dilatush.monitor.monitors;
 
-import com.dilatush.monitor.Config;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
-import com.dilatush.mop.PostOffice;
-import com.dilatush.util.Files;
-import com.dilatush.util.Outcome;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -22,7 +21,6 @@ import java.util.logging.Logger;
 import static com.dilatush.util.Conversions.fromCtoF;
 import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.General.isNull;
-import static java.lang.Thread.sleep;
 
 
 /**
@@ -49,9 +47,10 @@ public class YoLink extends AMonitor {
      *
      * @param _mailbox The MOP mailbox for this monitor to use.
      * @param _params The parameters for this monitor.
+     * @param _interval the interval between runs for this monitor.
      */
-    public YoLink( final Mailbox _mailbox, final Map<String,Object> _params ) {
-        super( _mailbox );
+    public YoLink( final Mailbox _mailbox, final Map<String,Object> _params, final Duration _interval ) {
+        super( _mailbox, _interval );
 
         if( isNull( _params ) ) throw new IllegalArgumentException( "_params must be provided" );
 
@@ -439,33 +438,4 @@ public class YoLink extends AMonitor {
     private record Device( String model, String name, String type, String id, String udid, String token ){}
 
     private record THState( Device device, boolean online, int battery, double temperature, double humidity, double tempCorrection, double humidityCorrection ){}
-
-
-    /**
-     * This stub main is here for troubleshooting only - using it you can run the monitor just once, from a development machine.
-     */
-    @SuppressWarnings( "DuplicatedCode" )
-    public static void main( final String[] _args ) throws InterruptedException {
-
-        // set the configuration file location (must do before any logging actions occur)...
-        System.getProperties().setProperty( "java.util.logging.config.file", "logging.properties" );
-        //noinspection unused
-        Logger LOGGER = getLogger();
-
-        Config config = new Config();
-        Outcome<?> result = config.init( "MonitorConfigurator", "configuration.java", Files.readToString( new File( "credentials.txt" ) ) );
-        if( result.notOk() ) throw new IllegalArgumentException( "bad configuration" );
-        PostOffice po = new PostOffice( config.postOfficeConfig );
-        Mailbox mailbox = po.createMailbox( "monitor" );
-
-        var mi = config.monitors.get( 0 );
-        var mon = new YoLink( mailbox, mi.parameters() );
-
-        mon.run();
-
-        sleep( 5000 );
-
-        //noinspection ResultOfMethodCallIgnored
-        config.hashCode();
-    }
 }
