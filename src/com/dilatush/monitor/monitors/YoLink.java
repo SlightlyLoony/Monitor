@@ -101,7 +101,7 @@ public class YoLink extends AMonitor {
 
             LOGGER.log( Level.SEVERE, "Failed while querying YoLink API: " + _e.getMessage(), _e );
 
-            sendEvent( "YoLink.apiFail", "?", "Failure querying YoLink API", "Failure while querying YoLink API: " + _e.getMessage(), 8 );
+            sendEvent( "YoLink.apiFail", "?", "Failure querying YoLink API", "Failure while querying YoLink API: " + _e.getClass().getSimpleName() + ": " + _e.getMessage(), 8 );
         }
     }
 
