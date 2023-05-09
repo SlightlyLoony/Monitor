@@ -142,6 +142,9 @@ public class YoLink extends AMonitor {
         // create our status message...
         var message = mailbox.createPublishMessage( "yolink.monitor" );
 
+        // fill in the message interval...
+        message.putDotted( "monitor.yolink.messageIntervalMs", interval.toMillis() );
+
         // fill in the data...
         JSONObject sensors = new JSONObject();
         message.putDotted( "monitor.yolink.sensors",  sensors );
