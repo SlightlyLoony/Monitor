@@ -4,7 +4,7 @@
 scp out/Monitor.jar beast:/apps/monitor
 scp Monitor.service beast:/apps/monitor
 scp configurationBeast.java beast:/apps/monitor/configuration.java
-scp credentials.txt beast:/apps/monitor
+scp credentialsBeast.txt beast:/apps/monitor/credentials.txt
 scp logging.properties beast:/apps/monitor
 
 # execute commands on beast

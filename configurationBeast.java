@@ -2,6 +2,7 @@ import com.dilatush.monitor.Config;
 import com.dilatush.monitor.MonitorInstance;
 import com.dilatush.monitor.monitors.NTPServer;
 import com.dilatush.monitor.monitors.OS;
+import com.dilatush.monitor.monitors.JVM;
 import com.dilatush.monitor.monitors.YoLink;
 import com.dilatush.monitor.monitors.YoLinkTriggerDef;
 import com.dilatush.monitor.monitors.YoLinkTriggerField;
@@ -88,5 +89,10 @@ public class MonitorConfigurator implements Configurator {
         params = new HashMap<>();
         params.put( "name", "beast" );
         config.monitors.add( new MonitorInstance( OS.class, params, Duration.ofMinutes( 10 ) ) );
+
+        // JVM configuration...
+        params = new HashMap<>();
+        params.put( "name", "beast_monitor" );
+        config.monitors.add( new MonitorInstance( JVM.class, params, Duration.ofMinutes( 10 ) ) );
     }
 }

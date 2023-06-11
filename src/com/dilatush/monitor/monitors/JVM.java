@@ -1,6 +1,10 @@
-package com.dilatush.monitor.util;
+package com.dilatush.monitor.monitors;
 
+import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
+
+import java.time.Duration;
+import java.util.Map;
 
 import static com.dilatush.util.General.isNotNull;
 
@@ -9,7 +13,9 @@ import static com.dilatush.util.General.isNotNull;
  *
  * @author Tom Dilatush  tom@dilatush.com
  */
-public class JVMMonitor {
+public class JVM extends AMonitor {
+
+    private final String name;
 
     private long usedBytes;            // memory allocated and actually being used, both code and data...
     private long freeBytes;            // memory allocated by not currently in use...
@@ -27,33 +33,49 @@ public class JVMMonitor {
 
 
     /**
-     * Runs this monitor and fills the specified message with the results.
+     * Creates a new instance of this class with the given Mailbox.
      *
-     * @param _message the message to be filled.
+     * @param _mailbox  The mailbox for this monitor to use.
+     * @param _params The parameters for this monitor.
+     * @param _interval the interval between runs for this monitor.
      */
-    public void fill( final Message _message ) {
-
-        // first run the monitor...
-        run();
-
-        // then fill in all the results...
-        _message.putDotted( "monitor.jvm.usedBytes",            usedBytes           );
-        _message.putDotted( "monitor.jvm.freeBytes",            freeBytes           );
-        _message.putDotted( "monitor.jvm.allocatedBytes",       allocatedBytes      );
-        _message.putDotted( "monitor.jvm.availableBytes",       availableBytes      );
-        _message.putDotted( "monitor.jvm.maxBytes",             maxBytes            );
-        _message.putDotted( "monitor.jvm.cpus",                 cpus                );
-        _message.putDotted( "monitor.jvm.totalThreads",         totalThreads        );
-        _message.putDotted( "monitor.jvm.newThreads",           newThreads          );
-        _message.putDotted( "monitor.jvm.runningThreads",       runningThreads      );
-        _message.putDotted( "monitor.jvm.blockedThreads",       blockedThreads      );
-        _message.putDotted( "monitor.jvm.waitingThreads",       waitingThreads      );
-        _message.putDotted( "monitor.jvm.timedWaitingThreads",  timedWaitingThreads );
-        _message.putDotted( "monitor.jvm.terminatedThreads",    terminatedThreads   );
+    public JVM( final Mailbox _mailbox, final Map<String,Object> _params, final Duration _interval ) {
+        super( _mailbox, _interval );
+        name = (String) _params.get( "name" );
     }
 
 
+    /**
+     * Runs this monitor and fills the specified message with the results.
+     */
     public void run() {
+
+        // first run the monitor...
+        capture();
+
+        Message msg = mailbox.createPublishMessage( name + "_jvm.monitor" );
+
+        // send the message interval...
+        msg.putDotted( "monitor.jvm.messageIntervalMs",     interval.toMillis()        );
+
+        // then fill in all the results...
+        msg.putDotted( "monitor.jvm.usedBytes",            usedBytes           );
+        msg.putDotted( "monitor.jvm.freeBytes",            freeBytes           );
+        msg.putDotted( "monitor.jvm.allocatedBytes",       allocatedBytes      );
+        msg.putDotted( "monitor.jvm.availableBytes",       availableBytes      );
+        msg.putDotted( "monitor.jvm.maxBytes",             maxBytes            );
+        msg.putDotted( "monitor.jvm.cpus",                 cpus                );
+        msg.putDotted( "monitor.jvm.totalThreads",         totalThreads        );
+        msg.putDotted( "monitor.jvm.newThreads",           newThreads          );
+        msg.putDotted( "monitor.jvm.runningThreads",       runningThreads      );
+        msg.putDotted( "monitor.jvm.blockedThreads",       blockedThreads      );
+        msg.putDotted( "monitor.jvm.waitingThreads",       waitingThreads      );
+        msg.putDotted( "monitor.jvm.timedWaitingThreads",  timedWaitingThreads );
+        msg.putDotted( "monitor.jvm.terminatedThreads",    terminatedThreads   );
+    }
+
+
+    private void capture() {
 
         // first we investigate memory, running the gc first to eliminate dead objects...
         Runtime runtime = Runtime.getRuntime();
@@ -82,12 +104,12 @@ public class JVMMonitor {
             Thread t = threads[i];
             totalThreads++;
             switch( t.getState() ) {
-                case NEW:           newThreads++;          break;
-                case BLOCKED:       blockedThreads++;      break;
-                case WAITING:       waitingThreads++;      break;
-                case RUNNABLE:      runningThreads++;      break;
-                case TERMINATED:    terminatedThreads++;   break;
-                case TIMED_WAITING: timedWaitingThreads++; break;
+                case NEW -> newThreads++;
+                case BLOCKED -> blockedThreads++;
+                case WAITING -> waitingThreads++;
+                case RUNNABLE -> runningThreads++;
+                case TERMINATED -> terminatedThreads++;
+                case TIMED_WAITING -> timedWaitingThreads++;
             }
         }
     }
