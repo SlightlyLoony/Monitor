@@ -61,8 +61,8 @@ public class Monitor {
                 // schedule it...
                 executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );
 
-                // stagger the start of the next monitor by a couple of minutes...
-                startDelay = startDelay.plus( Duration.ofMinutes( 2 ) );
+                // stagger the start of the next monitor by a few seconds...
+                startDelay = startDelay.plus( Duration.ofSeconds( 15 ) );
             }
         }
         catch( Exception _e ) {

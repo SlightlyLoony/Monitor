@@ -1,6 +1,7 @@
 import com.dilatush.monitor.Config;
 import com.dilatush.monitor.MonitorInstance;
 import com.dilatush.monitor.monitors.NTPServer;
+import com.dilatush.monitor.monitors.OS;
 import com.dilatush.monitor.monitors.YoLink;
 import com.dilatush.monitor.monitors.YoLinkTriggerDef;
 import com.dilatush.monitor.monitors.YoLinkTriggerField;
@@ -28,8 +29,8 @@ public class MonitorConfigurator implements Configurator {
 
         // configure our post office...
         var poc     = new PostOffice.PostOfficeConfig();
-        poc.name    = "monitor";
-        poc.secret  = === mop secret ===;
+        poc.name    = === beast MOP name ===;
+        poc.secret  = === beast MOP secret ===;
         poc.cpoHost = "cpo.dilatush.com";
 
 
@@ -82,5 +83,10 @@ public class MonitorConfigurator implements Configurator {
         params.put( "username", "admin"                         );
         params.put( "password", === NTP server password ===     );
         config.monitors.add( new MonitorInstance( NTPServer.class, params, Duration.ofMinutes( 1 ) ) );
+
+        // OS configuration...
+        params = new HashMap<>();
+        params.put( "name", "beast" );
+        config.monitors.add( new MonitorInstance( OS.class, params, Duration.ofMinutes( 10 ) ) );
     }
 }
