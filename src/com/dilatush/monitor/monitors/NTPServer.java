@@ -130,6 +130,7 @@ public class NTPServer extends AMonitor {
 
         // send it!
         mailbox.send( msg );
+        LOGGER.info( "Sent NTP server monitor message" );
     }
 
 
@@ -157,6 +158,7 @@ public class NTPServer extends AMonitor {
 
         // send it!
         mailbox.send( msg );
+        LOGGER.info( "Sent NTP server statistics message" );
     }
 
 

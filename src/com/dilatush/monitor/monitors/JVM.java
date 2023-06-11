@@ -5,7 +5,9 @@ import com.dilatush.mop.Message;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.logging.Logger;
 
+import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.General.isNotNull;
 
 /**
@@ -14,6 +16,8 @@ import static com.dilatush.util.General.isNotNull;
  * @author Tom Dilatush  tom@dilatush.com
  */
 public class JVM extends AMonitor {
+
+    private static final Logger LOGGER = getLogger();
 
     private final String name;
 
@@ -72,6 +76,10 @@ public class JVM extends AMonitor {
         msg.putDotted( "monitor.jvm.waitingThreads",       waitingThreads      );
         msg.putDotted( "monitor.jvm.timedWaitingThreads",  timedWaitingThreads );
         msg.putDotted( "monitor.jvm.terminatedThreads",    terminatedThreads   );
+
+        // send it!
+        mailbox.send( msg );
+        LOGGER.info( "Sent JVM monitor message" );
     }
 
 

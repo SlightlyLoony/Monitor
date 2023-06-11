@@ -137,6 +137,7 @@ public class OS extends AMonitor {
 
         // send it!
         mailbox.send( msg );
+        LOGGER.info( "Sent OS monitor message" );
     }
 
 

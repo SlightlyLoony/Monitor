@@ -28,7 +28,6 @@ import static com.dilatush.util.General.isNull;
  */
 public class YoLink extends AMonitor {
 
-
     private final Logger LOGGER = getLogger();
 
     private final String clientID;
@@ -128,6 +127,7 @@ public class YoLink extends AMonitor {
 
             // send it!
             mailbox.send( msg );
+            LOGGER.info( "Sent YoLink statistics message" );
         }
     }
 
@@ -165,6 +165,7 @@ public class YoLink extends AMonitor {
 
         // send it!
         mailbox.send( message );
+        LOGGER.info( "Sent YoLink monitor message" );
     }
 
 
