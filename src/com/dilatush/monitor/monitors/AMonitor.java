@@ -9,13 +9,18 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import static com.dilatush.util.General.getLogger;
 import static com.dilatush.util.General.isNull;
 
 /**
  * Abstract base class for all monitors.
  */
 public abstract class AMonitor implements Runnable {
+
+    private static final Logger LOGGER = getLogger();
 
     protected final Mailbox             mailbox;      // the mailbox for this monitor to use...
     protected final String              eventSource;  // the source for events from this monitor, in the form "monitor.<monitor class name>"...
@@ -40,6 +45,19 @@ public abstract class AMonitor implements Runnable {
         eventSource     = "monitor." + getClass().getSimpleName();
         tagLastSentMap  = new HashMap<>();
     }
+
+
+    public void run() {
+        try {
+            runImpl();
+        }
+        catch( Exception _e ) {
+            LOGGER.log( Level.SEVERE, "Unexpected exception: " + _e.getMessage(), _e );
+        }
+    }
+
+
+    abstract protected void runImpl();
 
 
     /**
@@ -124,10 +142,4 @@ public abstract class AMonitor implements Runnable {
             return _b ? TRUE : FALSE;
         }
     }
-
-
-    /**
-     * Perform the periodic monitoring.
-     */
-    public abstract void run();
 }

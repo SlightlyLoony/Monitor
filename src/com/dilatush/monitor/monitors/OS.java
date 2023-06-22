@@ -98,7 +98,7 @@ public class OS extends AMonitor {
      * Perform the periodic monitoring.  For this monitor that interval should be 10 minutes.
      */
     @Override
-    public void run() {
+    protected void runImpl() {
 
         // first run the monitor...
         capture();

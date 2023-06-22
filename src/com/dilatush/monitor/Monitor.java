@@ -5,6 +5,7 @@ import com.dilatush.mop.PostOffice;
 import com.dilatush.util.Files;
 import com.dilatush.util.Outcome;
 import com.dilatush.util.ScheduledExecutor;
+import com.dilatush.util.networkingengine.NetworkingEngine;
 
 import java.io.File;
 import java.time.Duration;
@@ -15,6 +16,8 @@ import java.util.logging.Logger;
 import static com.dilatush.util.General.getLogger;
 
 public class Monitor {
+
+    private static NetworkingEngine NETWORKING_ENGINE;
 
 
     public static void main( String[] args ) {
@@ -27,9 +30,17 @@ public class Monitor {
         LOGGER.info( "Monitor is starting..." );
 
         // set up our scheduled executor...
-        var executorThreads = 2;
+        var executorThreads = 5;
         var executorDaemon = false;  // false means user threads...
         ScheduledExecutor executor = new ScheduledExecutor( executorThreads, executorDaemon );
+
+        // set up our networking engine...
+        var netOut = NetworkingEngine.getInstance( "Monitor networking engine", executor );
+        if( netOut.notOk() ) {
+            LOGGER.severe( "Aborting; could not create network engine\n" + netOut.msg() );
+            System.exit( 2 );
+        }
+        NETWORKING_ENGINE = netOut.info();
 
         // get our configuration...
         Config config = new Config();
@@ -52,23 +63,34 @@ public class Monitor {
             var startDelay = Duration.ZERO;
             for( MonitorInstance mi : config.monitors ) {
 
-                // use reflection to get a constructor for our monitor...
-                var c = mi.monitorClass().getConstructor( Mailbox.class, Map.class, Duration.class );
+                try {
+                    // use reflection to get a constructor for our monitor...
+                    var c = mi.monitorClass().getConstructor( Mailbox.class, Map.class, Duration.class );
 
-                // get our new monitor instance...
-                var monitor = c.newInstance( mailbox, mi.parameters(), mi.interval() );
+                    // get our new monitor instance...
+                    var monitor = c.newInstance( mailbox, mi.parameters(), mi.interval() );
 
-                // schedule it...
-                executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );
+                    // schedule it...
+                    executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );
 
-                // stagger the start of the next monitor by a few seconds...
-                startDelay = startDelay.plus( Duration.ofSeconds( 15 ) );
+                    // stagger the start of the next monitor by a few seconds...
+                    startDelay = startDelay.plus( Duration.ofSeconds( 15 ) );
+                }
+                catch( Exception _e ) {
+                    LOGGER.log( Level.SEVERE, "Problem starting monitor: " + mi.monitorClass().getSimpleName(), _e );
+                }
             }
         }
         catch( Exception _e ) {
             LOGGER.log( Level.SEVERE, "Problem starting monitors", _e );
+            System.exit( 3 );
         }
 
         // we can just leave, because the executor threads are user threads...
+    }
+
+
+    public static NetworkingEngine getNetworkingEngine() {
+        return NETWORKING_ENGINE;
     }
 }

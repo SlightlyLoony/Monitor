@@ -52,7 +52,8 @@ public class JVM extends AMonitor {
     /**
      * Runs this monitor and fills the specified message with the results.
      */
-    public void run() {
+    @Override
+    protected void runImpl() {
 
         // first run the monitor...
         capture();

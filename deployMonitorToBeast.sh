@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# copy all the deployment files over to the Events server...
+# copy all the deployment files over to the Monitor server...
 scp out/Monitor.jar beast:/apps/monitor
 scp Monitor.service beast:/apps/monitor
 scp configurationBeast.java beast:/apps/monitor/configuration.java

@@ -1,6 +1,7 @@
 import com.dilatush.monitor.Config;
 import com.dilatush.monitor.MonitorInstance;
 import com.dilatush.monitor.monitors.NTPServer;
+import com.dilatush.monitor.monitors.ISP;
 import com.dilatush.monitor.monitors.OS;
 import com.dilatush.monitor.monitors.JVM;
 import com.dilatush.monitor.monitors.YoLink;
@@ -94,5 +95,9 @@ public class MonitorConfigurator implements Configurator {
         params = new HashMap<>();
         params.put( "name", "beast_monitor" );
         config.monitors.add( new MonitorInstance( JVM.class, params, Duration.ofMinutes( 10 ) ) );
+
+        // ISP configuration...
+        params = new HashMap<>();
+        config.monitors.add( new MonitorInstance( ISP.class, params, Duration.ofSeconds( 15 ) ) );
     }
 }

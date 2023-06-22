@@ -82,7 +82,7 @@ public class NTPServer extends AMonitor {
      * Perform the periodic monitoring.  For this monitor that interval should be 60 seconds.
      */
     @Override
-    public void run() {
+    protected void runImpl() {
 
         try {
 

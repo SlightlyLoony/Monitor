@@ -81,7 +81,7 @@ public class YoLink extends AMonitor {
      * Perform the periodic monitoring.
      */
     @Override
-    public void run() {
+    protected void runImpl() {
 
         try {
             ensureAccessToken();
