@@ -126,6 +126,8 @@ public class ISP extends AMonitor {
     @Override
     protected void runImpl() {
 
+        var startTime = Instant.now();
+
         // make sure we've got connectivity to our edge router...
         var edgeOutcome = isEdgeRouterUp();
         if( edgeOutcome.notOk() ) {
@@ -199,6 +201,9 @@ public class ISP extends AMonitor {
 
         // persist the statistics...
         saveStatistics();
+
+        var runTime = Instant.now().toEpochMilli() - startTime.toEpochMilli();
+        LOGGER.finest( "ISP Monitor run time: " + Time.formatDuration( runTime ) );
     }
 
 
