@@ -29,6 +29,7 @@ import static com.dilatush.util.General.getLogger;
 public class ISP extends AMonitor {
 
     private static final Logger LOGGER = getLogger();
+    @SuppressWarnings( "SpellCheckingInspection" )
     private static final DateTimeFormatter localDateTimeFormat = DateTimeFormatter.ofPattern( "LLL dd, uuuu hh:mm:ss.SSS" );
 
     private static final Outcome.Forge<IPAddress> FORGE_IP       = new Outcome.Forge<>();
@@ -293,14 +294,14 @@ public class ISP extends AMonitor {
 
 
     private void sendIPChangeEvent( final IPAddress _from, final IPAddress _to ) {
-        String msg = null;
+        String msg;
         if( _from == null )
             msg = "Public IP address was unknown, is now " + _to.toString() + " (" + isps.get( _to ).name + ")";
         else
-            msg = "Public IP address was " + _from.toString() + " (" + isps.get( _from ).name + "), is now " +
+            msg = "Public IP address was " + _from + " (" + isps.get( _from ).name + "), is now " +
                     _to.toString() + " (" + isps.get( _to ).name + ")";
-        sendEvent( "ISP.publicIPChange", "ISP.publicIPChange", "Public IP address changed to: " + _to.toString(),
-                "Starlink (primary ISP) is now up.", 6 );
+        sendEvent( "ISP.publicIPChange", "ISP.publicIPChange", "Public IP address changed to: " + _to,
+                msg, 6 );
     }
 
 
