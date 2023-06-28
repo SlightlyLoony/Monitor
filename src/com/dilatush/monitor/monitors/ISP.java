@@ -41,9 +41,9 @@ public class ISP extends AMonitor {
     private static final IPAddress EDGE_ROUTER_IP   = IPAddress.fromString( "10.1.4.1"       ).info();
     private static final File      PERSISTENCE_FILE = new File( "isp.data" );
 
-    private static final int DNS_PORT = 53;
-    private static final int ROUTER_PORT = 80;
-    private static final int CONNECT_TIMEOUT_MS = 500;
+    private static final int DNS_PORT           = 53;
+    private static final int ROUTER_PORT        = 80;
+    private static final int CONNECT_TIMEOUT_MS = 1000;
 
     // statistics...
     private Duration  onPrimaryTime;      // amount of time on primary ISP...
@@ -162,6 +162,7 @@ public class ISP extends AMonitor {
         var secondaryNowUp = isuOutcome.ok() ? isuOutcome.info() : lastRank == ISPRank.SECONDARY;
         var toPri = (ispInfo.rank == ISPRank.PRIMARY) && (lastRank != ISPRank.PRIMARY);
         var toSec = (ispInfo.rank == ISPRank.SECONDARY) && (lastRank != ISPRank.SECONDARY);
+        if( toSec ) lastSecondaryTime = captureTime;
 
         // and from the captured info, the statistics...
         var ipChange = (ipAddress == null) || !ipAddress.equals( ispInfo.ip );
