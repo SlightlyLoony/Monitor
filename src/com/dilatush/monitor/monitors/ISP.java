@@ -157,9 +157,9 @@ public class ISP extends AMonitor {
         var ispInfo = ispOutcome.info();
         var captureTime = Instant.now();
         var ipuOutcome = isPrimaryUp();
-        var primaryNowUp = ipuOutcome.ok() ? ipuOutcome.info() : lastRank == ISPRank.PRIMARY;
+        var primaryNowUp = ipuOutcome.ok() ? ipuOutcome.info() : primaryUp;  // update if we got a good reading; otherwise use the last good reading...
         var isuOutcome = isSecondaryUp();
-        var secondaryNowUp = isuOutcome.ok() ? isuOutcome.info() : lastRank == ISPRank.SECONDARY;
+        var secondaryNowUp = isuOutcome.ok() ? isuOutcome.info() : secondaryUp;  // update if we got a good reading; otherwise use the last good reading...
         var toPri = (ispInfo.rank == ISPRank.PRIMARY) && (lastRank != ISPRank.PRIMARY);
         var toSec = (ispInfo.rank == ISPRank.SECONDARY) && (lastRank != ISPRank.SECONDARY);
         if( toSec ) lastSecondaryTime = captureTime;
@@ -386,7 +386,9 @@ public class ISP extends AMonitor {
 
             // if we failed to connect, and the reason was not a timeout, then bail out; if it was a timeout, see if we can try again...
             if( connectOutcome.notOk() ) {
-                if( connectOutcome.msg().toLowerCase().contains( "timeout" ) ) continue;
+                LOGGER.finest( "Connect not ok: " + connectOutcome.msg() );
+                var lcMsg = connectOutcome.msg().toLowerCase();
+                if( lcMsg.contains( "timeout" ) || lcMsg.contains( "timed out" )) continue;
                 return FORGE_BOOLEAN.notOk( connectOutcome );
             }
 
