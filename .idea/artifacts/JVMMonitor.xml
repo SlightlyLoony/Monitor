@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="JVMMonitor">
+    <output-path>$PROJECT_DIR$/out</output-path>
+    <root id="archive" name="JVMMonitor.jar">
+      <element id="module-output" name="JVMMonitor" />
+    </root>
+  </artifact>
+</component>
