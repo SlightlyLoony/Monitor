@@ -54,6 +54,9 @@ public class NTPServer extends AMonitor {
     private TriState lastSatsVisibleOK = UNKNOWN;
     private TriState lastAntennaOK     = UNKNOWN;
 
+    // synthesized XML document scraped from NTP server...
+    private String xml;
+
 
     /**
      * Create a new instance of this class to monitor a TF-1006-PRO NTP server at the given URL, with the given username and password (contained in the parameters).
@@ -98,7 +101,7 @@ public class NTPServer extends AMonitor {
         // if we get any exceptions, then we log them and send a rate-limited event...
         catch( Exception _e ) {
 
-            LOGGER.log( Level.SEVERE, "Problem reading from NTP Server", _e );
+            LOGGER.log( Level.SEVERE, "Problem reading from NTP Server\nXML read:\n" + xml, _e );
 
             var subject = _e.getClass().getSimpleName();
             var message = _e.getMessage();
@@ -287,7 +290,7 @@ public class NTPServer extends AMonitor {
     private Scraping scrape() throws IOException, ParserConfigurationException, SAXException, XPathExpressionException {
 
         // get an XML string with all the data scraped from the NTP server...
-        String xml =
+         xml =
                 "<ntp>" +
                 scrape( "time"  ) +
                 scrape( "state" ) +
@@ -472,7 +475,21 @@ public class NTPServer extends AMonitor {
         private boolean antennaOK;   // true if the antenna is ok...
     }
 }
+/*
+    Threw: java.lang.ArrayIndexOutOfBoundsException
+    Message: Index 1 out of bounds for length 1
+      com.dilatush.monitor.monitors.NTPServer.extractLatLon(NTPServer.java:348)
+      com.dilatush.monitor.monitors.NTPServer.scrape(NTPServer.java:312)
+      com.dilatush.monitor.monitors.NTPServer.runImpl(NTPServer.java:90)
+      com.dilatush.monitor.monitors.AMonitor.run(AMonitor.java:52)
+      java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+      java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:305)
+      java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305)
+      java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+      java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+      java.base/java.lang.Thread.run(Thread.java:833)
 
+ */
 
 /*
    Sample synthesized scraped XML blob:
