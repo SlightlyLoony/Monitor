@@ -21,6 +21,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.dilatush.util.General.getLogger;
+import static com.dilatush.util.HTTP.*;
 
 /**
  * Implements monitoring of primary and secondary ISP.  It is hardwired for ISP characteristics at the author's (Tom Dilatush's) house, and should run
@@ -411,7 +412,7 @@ public class ISP extends AMonitor {
      */
     private Outcome<IPAddress> getPublicIP() {
 
-        @SuppressWarnings( "HttpUrlsUsage" ) var reqOutcome = HTTP.requestText( "http://checkip.amazonaws.com" );
+        @SuppressWarnings( "HttpUrlsUsage" ) var reqOutcome = requestText( "http://checkip.amazonaws.com" );
         if( reqOutcome.notOk() ) return FORGE_IP.notOk( reqOutcome );
         return IPAddress.fromString( Strings.stripTrailingNewlines( reqOutcome.info() ) );
     }
@@ -437,7 +438,7 @@ public class ISP extends AMonitor {
             }
 
             // no, so query for it in ARIN's registry...
-            @SuppressWarnings( "HttpUrlsUsage" ) var reqOutcome = HTTP.requestJSONText( "http://rdap.arin.net/registry/ip/" + _ip.toString() );
+            @SuppressWarnings( "HttpUrlsUsage" ) var reqOutcome = requestJSONText( "http://rdap.arin.net/registry/ip/" + _ip.toString() );
             if( reqOutcome.notOk() ) return FORGE_ISP_INFO.notOk( reqOutcome );
             var response = reqOutcome.info().toLowerCase();
 

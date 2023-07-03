@@ -475,21 +475,6 @@ public class NTPServer extends AMonitor {
         private boolean antennaOK;   // true if the antenna is ok...
     }
 }
-/*
-    Threw: java.lang.ArrayIndexOutOfBoundsException
-    Message: Index 1 out of bounds for length 1
-      com.dilatush.monitor.monitors.NTPServer.extractLatLon(NTPServer.java:348)
-      com.dilatush.monitor.monitors.NTPServer.scrape(NTPServer.java:312)
-      com.dilatush.monitor.monitors.NTPServer.runImpl(NTPServer.java:90)
-      com.dilatush.monitor.monitors.AMonitor.run(AMonitor.java:52)
-      java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
-      java.base/java.util.concurrent.FutureTask.runAndReset(FutureTask.java:305)
-      java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:305)
-      java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
-      java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
-      java.base/java.lang.Thread.run(Thread.java:833)
-
- */
 
 /*
    Sample synthesized scraped XML blob:

@@ -4,6 +4,7 @@
     <root id="archive" name="Monitor.jar">
       <element id="module-output" name="Monitor" />
       <element id="extracted-dir" path="$PROJECT_DIR$/../MOP/out/artifacts/MOP.jar" path-in-jar="/" />
+      <element id="module-output" name="JVMMonitor" />
     </root>
   </artifact>
 </component>
