@@ -21,6 +21,7 @@ import static java.lang.Thread.sleep;
  *
  * @author Tom Dilatush  tom@dilatush.com
  */
+@SuppressWarnings( { "SpellCheckingInspection", "DuplicatedCode" } )
 public class OS extends AMonitor {
 
     private static final Logger LOGGER = getLogger();
@@ -133,7 +134,7 @@ public class OS extends AMonitor {
         msg.putDotted( "monitor.os.totalINodes",   totalINodes                     );
         msg.putDotted( "monitor.os.usedINodes",    usedINodes                      );
         msg.putDotted( "monitor.os.freeINodes",    freeINodes                      );
-        msg.putDotted( "monitor.os.freeInodesPct", freeINodesPct                   );
+        msg.putDotted( "monitor.os.freeINodesPct", freeINodesPct                   );
 
         // send it!
         mailbox.send( msg );
