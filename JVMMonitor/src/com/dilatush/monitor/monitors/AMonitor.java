@@ -48,6 +48,9 @@ public abstract class AMonitor implements Runnable {
 
 
     public void run() {
+
+        LOGGER.finest( "Running monitor " + getClass().getSimpleName() );
+
         try {
             runImpl();
         }

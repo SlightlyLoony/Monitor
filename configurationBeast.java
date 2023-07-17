@@ -4,11 +4,12 @@ import com.dilatush.monitor.monitors.NTPServer;
 import com.dilatush.monitor.monitors.ISP;
 import com.dilatush.monitor.monitors.OS;
 import com.dilatush.monitor.monitors.JVM;
-import com.dilatush.monitor.monitors.YoLink;
-import com.dilatush.monitor.monitors.YoLinkTriggerDef;
-import com.dilatush.monitor.monitors.YoLinkTriggerField;
-import com.dilatush.monitor.monitors.YoLinkTriggerType;
-import com.dilatush.monitor.monitors.YoLinkTriggerClass;
+import com.dilatush.monitor.monitors.JVMs;
+import com.dilatush.monitor.monitors.yolink.YoLink;
+import com.dilatush.monitor.monitors.yolink.YoLinkTriggerDef;
+import com.dilatush.monitor.monitors.yolink.YoLinkTriggerField;
+import com.dilatush.monitor.monitors.yolink.YoLinkTriggerType;
+import com.dilatush.monitor.monitors.yolink.YoLinkTriggerClass;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.config.Configurator;
 import com.dilatush.util.config.AConfig;
@@ -95,6 +96,13 @@ public class MonitorConfigurator implements Configurator {
         params = new HashMap<>();
         params.put( "name", "beast_monitor" );
         config.monitors.add( new MonitorInstance( JVM.class, params, Duration.ofMinutes( 10 ) ) );
+
+        // JVMs configuration...
+        params = new HashMap<>();
+        params.put( "JVMs",
+                "WeatherCapture:Weather Capture service,Weather:Weather Processing service,WWW:Web service,Monitor:Monitoring service," +
+                "Events:Events service,CPO:Central Post Office service");
+        config.monitors.add( new MonitorInstance( JVMs.class, params, Duration.ofMinutes( 60 ) ) );
 
         // ISP configuration...
         params = new HashMap<>();

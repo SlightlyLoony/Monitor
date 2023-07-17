@@ -1,4 +1,4 @@
-package com.dilatush.monitor.monitors;
+package com.dilatush.monitor.monitors.yolink;
 
 public enum YoLinkTriggerType {
 

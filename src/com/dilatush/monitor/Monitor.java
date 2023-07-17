@@ -74,7 +74,7 @@ public class Monitor {
                     executor.scheduleAtFixedRate( monitor, startDelay, mi.interval() );
 
                     // stagger the start of the next monitor by a few seconds...
-                    startDelay = startDelay.plus( Duration.ofSeconds( 15 ) );
+                    startDelay = startDelay.plus( Duration.ofSeconds( 5 ) );
                 }
                 catch( Exception _e ) {
                     LOGGER.log( Level.SEVERE, "Problem starting monitor: " + mi.monitorClass().getSimpleName(), _e );

@@ -1,5 +1,6 @@
-package com.dilatush.monitor.monitors;
+package com.dilatush.monitor.monitors.yolink;
 
+import com.dilatush.monitor.monitors.AMonitor;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
 import org.json.JSONException;
