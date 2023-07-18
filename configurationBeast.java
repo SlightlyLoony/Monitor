@@ -5,6 +5,8 @@ import com.dilatush.monitor.monitors.ISP;
 import com.dilatush.monitor.monitors.OS;
 import com.dilatush.monitor.monitors.JVM;
 import com.dilatush.monitor.monitors.JVMs;
+import com.dilatush.monitor.monitors.LAN;
+import com.dilatush.monitor.monitors.LAN.Check;
 import com.dilatush.monitor.monitors.yolink.YoLink;
 import com.dilatush.monitor.monitors.yolink.YoLinkTriggerDef;
 import com.dilatush.monitor.monitors.yolink.YoLinkTriggerField;
@@ -13,6 +15,7 @@ import com.dilatush.monitor.monitors.yolink.YoLinkTriggerClass;
 import com.dilatush.mop.PostOffice;
 import com.dilatush.util.config.Configurator;
 import com.dilatush.util.config.AConfig;
+import com.dilatush.util.ip.IPv4Address;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -101,11 +104,26 @@ public class MonitorConfigurator implements Configurator {
         params = new HashMap<>();
         params.put( "JVMs",
                 "WeatherCapture:Weather Capture service,Weather:Weather Processing service,WWW:Web service,Monitor:Monitoring service," +
-                "Events:Events service,CPO:Central Post Office service");
+                "Events:Events service,CPO:Central Post Office service,ace:Ubiquiti Unifi service");
         config.monitors.add( new MonitorInstance( JVMs.class, params, Duration.ofMinutes( 60 ) ) );
 
         // ISP configuration...
         params = new HashMap<>();
         config.monitors.add( new MonitorInstance( ISP.class, params, Duration.ofSeconds( 15 ) ) );
+
+        // LAN configuration...
+        var checks = new ArrayList<Check>();
+        checks.add( new Check( "barnswitch",  IPv4Address.fromString( "10.2.4.254"   ).info(), 80,  50 ) );
+        checks.add( new Check( "barnrouter",  IPv4Address.fromString( "10.2.4.1"     ).info(), 80,  50 ) );
+        checks.add( new Check( "barnradio",   IPv4Address.fromString( "10.1.100.101" ).info(), 80, 250 ) );
+        checks.add( new Check( "barnnano",    IPv4Address.fromString( "10.2.100.2"   ).info(), 80, 250 ) );
+        checks.add( new Check( "houseradio",  IPv4Address.fromString( "10.1.100.100" ).info(), 80, 250 ) );
+        checks.add( new Check( "houserouter", IPv4Address.fromString( "10.1.4.1"     ).info(), 80,  50 ) );
+        checks.add( new Check( "houseswitch", IPv4Address.fromString( "10.1.4.254"   ).info(), 80,  50 ) );
+        checks.add( new Check( "shednano",    IPv4Address.fromString( "10.2.100.3"   ).info(), 80, 250 ) );
+        checks.add( new Check( "shedrouter",  IPv4Address.fromString( "10.2.100.4"   ).info(), 80,  50 ) );
+        params = new HashMap<>();
+        params.put( "check", checks );
+        config.monitors.add( new MonitorInstance( LAN.class, params, Duration.ofMinutes( 15 ) ) );
     }
 }

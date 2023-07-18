@@ -3,10 +3,12 @@ package com.dilatush.monitor.monitors;
 import com.dilatush.monitor.Monitor;
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
-import com.dilatush.util.*;
+import com.dilatush.util.Files;
+import com.dilatush.util.Outcome;
+import com.dilatush.util.Strings;
+import com.dilatush.util.Time;
 import com.dilatush.util.ip.IPAddress;
-import com.dilatush.util.ip.IPv4Address;
-import com.dilatush.util.networkingengine.TCPOutboundPipe;
+import com.dilatush.util.networkingengine.TCPConnectionTest;
 
 import java.io.File;
 import java.time.Duration;
@@ -21,7 +23,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.dilatush.util.General.getLogger;
-import static com.dilatush.util.HTTP.*;
+import static com.dilatush.util.HTTP.requestJSONText;
+import static com.dilatush.util.HTTP.requestText;
 
 /**
  * Implements monitoring of primary and secondary ISP.  It is hardwired for ISP characteristics at the author's (Tom Dilatush's) house, and should run
@@ -35,7 +38,6 @@ public class ISP extends AMonitor {
 
     private static final Outcome.Forge<IPAddress> FORGE_IP       = new Outcome.Forge<>();
     private static final Outcome.Forge<ISPInfo>   FORGE_ISP_INFO = new Outcome.Forge<>();
-    private static final Outcome.Forge<Boolean>   FORGE_BOOLEAN  = new Outcome.Forge<>();
 
     private static final IPAddress STARLINK_ONLY_IP = IPAddress.fromString( "208.67.220.220" ).info();
     private static final IPAddress VERIZON_ONLY_IP  = IPAddress.fromString( "208.67.222.222" ).info();
@@ -370,36 +372,8 @@ public class ISP extends AMonitor {
      */
     private Outcome<Boolean> isConnectable( final IPAddress _ip, final int _port ) {
 
-        // try up to 3 times...
-        for( int i = 0; i < 3; i++ ) {
-
-            // get our pipe...
-            var tcpOutcome = TCPOutboundPipe.getNewInstance( Monitor.getNetworkingEngine(), IPv4Address.WILDCARD );
-
-            // if we had a problem creating the pipe, we have serious problems - time to bail out...
-            if( tcpOutcome.notOk() ) return FORGE_BOOLEAN.notOk( tcpOutcome );
-
-            // get our new pipe...
-            var tcp = tcpOutcome.info();
-
-            // make the connection attempt...
-            var connectOutcome = tcp.connect( _ip, _port, CONNECT_TIMEOUT_MS );
-
-            // if we failed to connect, and the reason was not a timeout, then bail out; if it was a timeout, see if we can try again...
-            if( connectOutcome.notOk() ) {
-                LOGGER.finest( "Connect not ok: " + connectOutcome.msg() );
-                var lcMsg = connectOutcome.msg().toLowerCase();
-                if( lcMsg.contains( "timeout" ) || lcMsg.contains( "timed out" )) continue;
-                return FORGE_BOOLEAN.notOk( connectOutcome );
-            }
-
-            // we succeeded, so close the connection and return success...
-            tcp.close();
-            return FORGE_BOOLEAN.ok( true );
-        }
-
-        // we're out of tries, so return failure...
-        return FORGE_BOOLEAN.ok( false );
+        var tcp = new TCPConnectionTest( Monitor.getNetworkingEngine() );
+        return tcp.isConnectable( CONNECT_TIMEOUT_MS, (ms) -> ms + CONNECT_TIMEOUT_MS, 3, _ip, _port );
     }
 
 
