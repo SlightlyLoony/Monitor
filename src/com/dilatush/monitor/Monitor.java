@@ -18,6 +18,7 @@ import static com.dilatush.util.General.getLogger;
 public class Monitor {
 
     private static NetworkingEngine NETWORKING_ENGINE;
+    private static String HOST;
 
 
     public static void main( String[] args ) {
@@ -53,6 +54,9 @@ public class Monitor {
         }
 
         // if we make it here, then we have a validated configuration, and we should be good to go!
+
+        // set our host name...
+        HOST = config.host;
 
         // start up our post office...
         PostOffice po = new PostOffice( config.postOfficeConfig );
@@ -92,5 +96,9 @@ public class Monitor {
 
     public static NetworkingEngine getNetworkingEngine() {
         return NETWORKING_ENGINE;
+    }
+
+    public static String getHost() {
+        return HOST;
     }
 }

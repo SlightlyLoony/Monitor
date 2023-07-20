@@ -14,6 +14,9 @@ import java.util.List;
  */
 public class Config extends AConfig {
 
+    // our host name...
+    public String host;
+
     // our post office configuration...
     public PostOffice.PostOfficeConfig postOfficeConfig;
 
