@@ -125,7 +125,6 @@ public class MonitorConfigurator implements Configurator {
         checks.add( new Check( "houseswitch", IPv4Address.fromString( "10.1.4.254"   ).info(), 80,  50 ) );
         checks.add( new Check( "shednano",    IPv4Address.fromString( "10.2.100.3"   ).info(), 80, 250 ) );
         checks.add( new Check( "shedrouter",  IPv4Address.fromString( "10.2.100.4"   ).info(), 80,  50 ) );
-        checks.add( new Check( "failtest",    IPv4Address.fromString( "10.2.100.4"   ).info(), 81,  50 ) );
         params = new HashMap<>();
         params.put( "checks", checks );
         config.monitors.add( new MonitorInstance( LAN.class, params, Duration.ofMinutes( 15 ) ) );

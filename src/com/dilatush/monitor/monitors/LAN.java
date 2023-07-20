@@ -57,8 +57,9 @@ public class LAN extends AMonitor {
             // try to connect...
             var result = tester.isConnectable( check.initialTimeoutMs, (ms) -> ms + check.initialTimeoutMs, 5, check.ip, check.port );
 
-            // if we had a failure, log it and continue...
+            // if we had a failure, send an event, log it and continue...
             if( result.notOk() ) {
+                sendEvent( "LAN.problem", check.name, "Problem connecting to " + check.name, result.msg(), 9 );
                 LOGGER.log( Level.WARNING, "TCP connection test failure: " + result.msg(), result.cause() );
                 continue;
             }
