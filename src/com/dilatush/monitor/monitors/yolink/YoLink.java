@@ -118,13 +118,13 @@ public class YoLink extends AMonitor {
 
             // build our event message...
             Message msg = mailbox.createDirectMessage( "events.post", "event.post", false );
-            msg.putDotted( "tag",                "YoLink_stats"                            );
-            msg.putDotted( "timestamp",          System.currentTimeMillis()                );
-            msg.putDotted( "fields.device_name", state.device.name                         );
-            msg.putDotted( "fields.model",       state.device.model                        );
-            msg.putDotted( "fields.humidity",    state.humidity + state.humidityCorrection );
-            msg.putDotted( "fields.temperature", state.temperature + state.tempCorrection  );
-            msg.putDotted( "fields.battery",     state.battery                             );
+            msg.putDotted( "tag",                "YoLink_stats"             );
+            msg.putDotted( "timestamp",          System.currentTimeMillis() );
+            msg.putDotted( "fields.device_name", state.device.name          );
+            msg.putDotted( "fields.model",       state.device.model         );
+            msg.putDotted( "fields.humidity",    state.humidity             );
+            msg.putDotted( "fields.temperature", state.temperature          );
+            msg.putDotted( "fields.battery",     state.battery              );
 
             // send it!
             mailbox.send( msg );
@@ -153,12 +153,12 @@ public class YoLink extends AMonitor {
 
             // fill in one sensor...
             var sensor = new JSONObject();
-            sensor.put( "online",      state.online                              );
-            sensor.put( "temperature", state.temperature + state.tempCorrection  );
-            sensor.put( "humidity",    state.humidity + state.humidityCorrection );
-            sensor.put( "battery",     state.battery                             );
-            sensor.put( "name",        state.device.name                         );
-            sensor.put( "model",       state.device.model                        );
+            sensor.put( "online",      state.online       );
+            sensor.put( "temperature", state.temperature  );
+            sensor.put( "humidity",    state.humidity     );
+            sensor.put( "battery",     state.battery      );
+            sensor.put( "name",        state.device.name  );
+            sensor.put( "model",       state.device.model );
 
             // stuff it into our sensors object...
             sensors.put( sensor.getString( "name" ), sensor );
@@ -283,8 +283,8 @@ public class YoLink extends AMonitor {
      */
     private double getCurrentValue( final THState _state, final YoLinkTriggerField _field ) {
         return switch( _field ) {
-            case HUMIDITY    -> _state.humidity + _state.humidityCorrection;
-            case TEMPERATURE -> _state.temperature + _state.tempCorrection;
+            case HUMIDITY    -> _state.humidity;
+            case TEMPERATURE -> _state.temperature;
             case BATTERY     -> _state.battery;
             case ONLINE      -> _state.online ? 1 : 0;
         };
@@ -321,10 +321,8 @@ public class YoLink extends AMonitor {
                     device,
                     dataObj.getBoolean( "online" ),
                     stateObj.getInt( "battery" ),
-                    fromCtoF( stateObj.getDouble( "temperature" ) ),
-                    stateObj.getDouble( "humidity" ),
-                    stateObj.getDouble( "tempCorrection" ),
-                    stateObj.getDouble( "humidityCorrection" )
+                    fromCtoF( stateObj.getDouble( "temperature" ) + stateObj.getDouble( "tempCorrection" ) ),
+                    stateObj.getDouble( "humidity" ) + stateObj.getDouble( "humidityCorrection" )
             );
             result.add( state );
         }
@@ -442,5 +440,5 @@ public class YoLink extends AMonitor {
 
     private record Device( String model, String name, String type, String id, String udid, String token ){}
 
-    private record THState( Device device, boolean online, int battery, double temperature, double humidity, double tempCorrection, double humidityCorrection ){}
+    private record THState( Device device, boolean online, int battery, double temperature, double humidity ){}
 }
