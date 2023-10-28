@@ -2,7 +2,7 @@ package com.dilatush.monitor.monitors;
 
 import com.dilatush.mop.Mailbox;
 import com.dilatush.mop.Message;
-import com.dilatush.util.Executor;
+import com.dilatush.util.BashExecutor;
 
 import java.time.Duration;
 import java.util.Map;
@@ -30,15 +30,15 @@ public class OS extends AMonitor {
     private static final long KILO = 1_024;
     private static final long MEGA = KILO * KILO;
 
-    private static final Executor osInfoEx         = new Executor( "uname -mnrs"       );
-    private static final Executor osxMemInfoEx1    = new Executor( "sysctl hw.memsize" );
-    private static final Executor osxMemInfoEx2    = new Executor( "vm_stat"           );
-    private static final Executor linuxMemInfoEx   = new Executor( "free -b"           );
-    private static final Executor osxCPUInfoEx     = new Executor( "iostat -C"         );
-    private static final Executor linuxCPUInfoEx   = new Executor( "cat /proc/stat"    );
-    private static final Executor osxDiskInfoEx    = new Executor( "df -lk"            );
-    private static final Executor linuxDiskInfoEx1 = new Executor( "df -l"             );
-    private static final Executor linuxDiskInfoEx2 = new Executor( "df -li"             );
+    private static final BashExecutor osInfoEx         = new BashExecutor( "uname -mnrs"       );
+    private static final BashExecutor osxMemInfoEx1    = new BashExecutor( "sysctl hw.memsize" );
+    private static final BashExecutor osxMemInfoEx2    = new BashExecutor( "vm_stat"           );
+    private static final BashExecutor linuxMemInfoEx   = new BashExecutor( "free -b"           );
+    private static final BashExecutor osxCPUInfoEx     = new BashExecutor( "iostat -C"         );
+    private static final BashExecutor linuxCPUInfoEx   = new BashExecutor( "cat /proc/stat"    );
+    private static final BashExecutor osxDiskInfoEx    = new BashExecutor( "df -lk"            );
+    private static final BashExecutor linuxDiskInfoEx1 = new BashExecutor( "df -l"             );
+    private static final BashExecutor linuxDiskInfoEx2 = new BashExecutor( "df -li"             );
 
     private static final Pattern osInfoPat
             = Pattern.compile( "(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+" );

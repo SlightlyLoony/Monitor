@@ -101,7 +101,7 @@ public class YoLink extends AMonitor {
 
             LOGGER.log( Level.SEVERE, "Failed while querying YoLink API: " + _e.getMessage(), _e );
 
-            sendEvent( "YoLink.apiFail", "?", "Failure querying YoLink API", "Failure while querying YoLink API: " + _e.getClass().getSimpleName() + ": " + _e.getMessage(), 8 );
+            sendEvent( Duration.ofHours( 6 ), "YoLink.apiFail", "?", "Failure querying YoLink API", "Failure while querying YoLink API: " + _e.getClass().getSimpleName() + ": " + _e.getMessage(), 8 );
         }
     }
 
@@ -313,7 +313,9 @@ public class YoLink extends AMonitor {
             var resp = post( "https://api.yosmart.com/open/yolink/v2/api", req.toString(), "application/json", true );
 
             // if we don't see success, throw an exception...
-            if( !"Success".equals( resp.get( "desc" ) ) ) throw new IOException( "YoLink failed to return device state" );
+            if( !"Success".equals( resp.get( "desc" ) ) ) {
+                throw new IOException( "YoLink failed to return device state: " + resp.toString(4) );
+            }
 
             var dataObj = resp.getJSONObject( "data" );
             var stateObj = dataObj.getJSONObject( "state" );
